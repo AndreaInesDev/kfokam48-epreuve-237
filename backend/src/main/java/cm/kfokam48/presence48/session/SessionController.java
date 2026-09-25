@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,5 +35,14 @@ public class SessionController {
     @GetMapping
     public ResponseEntity<List<SessionDto>> lister(@RequestParam Long promotionId) {
         return ResponseEntity.ok(service.listerParPromotion(promotionId));
+    }
+
+    /**
+     * EF12 — operation ajoutee au contrat : la cloture, absente de la demande du
+     * client alors que Q10, Q12 et Q13 en dependent.
+     */
+    @PostMapping("/{id}/cloture")
+    public ResponseEntity<SessionDto> cloturer(@PathVariable Long id) {
+        return ResponseEntity.ok(service.cloturer(id));
     }
 }

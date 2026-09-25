@@ -76,6 +76,16 @@ public class SessionCours {
         return clotureeAt != null;
     }
 
+    /**
+     * RG19 — le formateur cloture la session. Irreversible : rien dans la
+     * demande du client ne prevoit de reouvrir une session, et permettre
+     * l'inverse reviendrait a rendre modifiables des relectures deja rendues,
+     * ce que RG13 interdit.
+     */
+    public void cloturer(OffsetDateTime instant) {
+        this.clotureeAt = instant;
+    }
+
     public Long getId() {
         return id;
     }
