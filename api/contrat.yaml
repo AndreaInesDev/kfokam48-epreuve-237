@@ -165,6 +165,10 @@ paths:
         "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
         "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE
+        # AJOUT — etudiantId qui ne correspond à aucun étudiant. Le contrat
+        # d'origine ne prévoyait rien : sans ce cas, un identifiant inventé
+        # provoquerait une violation de clé étrangère, donc un 500.
+        "404": { $ref: "#/components/responses/Erreur" }   # ETUDIANT_INCONNU
         # AJOUT à une opération imposée — exigé par Q4 (cinq erreurs, blocage
         # de deux minutes). Aucun code imposé n'est modifié ni retiré ; une
         # réponse est ajoutée, parce que Q4 n'a nulle part ailleurs où vivre.
