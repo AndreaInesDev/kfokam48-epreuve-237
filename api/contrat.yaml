@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Contrat d'API — Présence48 (épreuve finale KFOKAM48)
-  version: "1.1"
+  version: "1.2"
   description: |
     ## Ce document
 
@@ -21,9 +21,12 @@ info:
 
     ## Version figée
 
-    Version 1.1, arrêtée à l'étape 1 AVANT le premier commit de code.
-    L'étape 3 la fera évoluer ; la version sera alors incrémentée et le
-    cahier des charges mis à jour dans le même mouvement.
+    Version 1.1 arrêtée à l'étape 1, AVANT le premier commit de code.
+
+    Version 1.2 — étape 3. Le client a changé d'avis sur Q6 : deux relecteurs
+    par exercice, note retenue égale à la moyenne des deux, provisoire si une
+    seule est rendue. Un champ `moyenneProvisoire` est ajouté au tableau ;
+    aucun champ imposé n'est retiré ni renommé. Cahier des charges v1.4.
 
     ## Format d'erreur
 
@@ -412,6 +415,12 @@ paths:
                     exercicesDeposes: { type: integer }
                     moyenne: { type: number, nullable: true }
                     relecturesEnAttente: { type: integer }
+                    # AJOUT etape 3 — le client demande deux relecteurs par
+                    # exercice et la moyenne des deux. Quand une seule des deux
+                    # relectures est rendue, la note est affichee mais doit etre
+                    # signalee comme provisoire. Champ ajoute, aucun champ impose
+                    # n'est retire ni renomme.
+                    moyenneProvisoire: { type: boolean }
         "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
 
   # ==========================================================================

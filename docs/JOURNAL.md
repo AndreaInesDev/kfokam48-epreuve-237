@@ -126,13 +126,51 @@ s'est passé. Les tests de clôture dépendaient de leur ordre d'exécution — 
 
 ## Étape 3 — Enveloppe
 
-**Fait :**
+**Fait :** enveloppe obtenue à 17h37, à vingt minutes de la clôture. Traitée en deux
+branches et deux pull requests, parce que le bug et le changement de besoin sont deux
+sujets différents.
 
-**Bloqué :**
+*Le bug.* Le client décrit « deux étudiants côte à côte, ils tapent le code presque en
+même temps, un seul apparaît ». Ce n'était pas RG4 : la contrainte porte sur le couple
+*(session, étudiant)* et ne peut pas bloquer deux étudiants différents. Le coupable
+était l'effet de bord RG20 que j'avais ajouté en `#5` : deux présences concurrentes
+retentaient le tirage au sort pour le même exercice orphelin, la seconde violait
+`UNIQUE (exercice_id)` de RG7, et comme l'insertion de la présence vivait dans la même
+transaction, elle était annulée avec elle. Issue `#34` ouverte **avant** de toucher au
+code, puis un commit `test:` qui échoue, puis un commit `fix:` après lequel il passe.
 
-**IA :**
+*Le changement.* Issues `#36` et `#37`, migration `V3__deux_relecteurs_par_exercice.sql`
+**ajoutée et non modifiée en place**, cahier des charges en v1.4, D2 et D4 corrigés,
+contrat en v1.2.
 
-**Ce que j'ai sorti du périmètre pour absorber le changement, et pourquoi :**
+**Bloqué :** le diagnostic du bug, une dizaine de minutes. La description du client
+pointait naturellement vers RG4 et la concurrence sur la présence elle-même, ce qui
+était une fausse piste : la vraie cause était une régression que j'avais introduite
+moi-même deux heures plus tôt. C'est la phrase « j'ai réessayé une fois, cette fois les
+deux sont passés » qui a tout expliqué — au second essai il n'y avait plus d'exercice
+orphelin à réassigner, donc plus de collision.
+
+**IA :** lui ai donné le témoignage du client sans lui souffler de piste. Elle a proposé
+RG4 et un verrou optimiste, ce qui aurait ajouté de la complexité sans rien corriger.
+Vérifié en écrivant d'abord le test : un test qui échoue pour la bonne raison est la
+seule preuve qu'on a compris le bug. Le premier test que j'ai écrit passait déjà — il
+testait la mauvaise chose.
+
+**Ce que j'ai sorti du périmètre pour absorber le changement, et pourquoi :** j'ai livré
+**l'analyse, la migration et le contrat**, et laissé l'implémentation du double tirage et
+du calcul de moyenne provisoire en issues ouvertes (`#36`, `#37`). Trois raisons, écrites
+en section 10 du cahier des charges. Une migration non versionnée au bon moment est le
+défaut que le sujet annonce comme le plus coûteux, et elle ne se rattrape pas après coup.
+Un schéma et un contrat justes avec un service en retard se reprennent en une heure ;
+l'inverse — du code qui contredit le schéma — se paie beaucoup plus cher. Et `#36` et
+`#37` s'insèrent **devant** `#12` à `#15` dans l'ordre de sacrifice, parce qu'un `Must`
+du client passe avant un `Should` que je m'étais donné.
+
+> **Un aveu sur l'ordre des jalons.** J'ai posé `[JALON] v1.0` à 17h31, avant de
+> recevoir l'enveloppe, pour sécuriser une soumission complète avant 18h00. Le travail
+> de l'étape 3 apparaît donc **après** ce jalon dans l'historique. C'est un compromis
+> assumé face à l'échéance, pas un oubli : je préférais une soumission valide sans
+> l'étape 3 à une étape 3 parfaite non soumise.
 
 ---
 
