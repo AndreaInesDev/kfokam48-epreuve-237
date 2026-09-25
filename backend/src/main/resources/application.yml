@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: presence48
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/presence48}
+    username: ${DB_USER:presence48}
+    password: ${DB_PASSWORD:presence48}
+
+  jpa:
+    # Contrainte B5 : ddl-auto=update est interdit hors tests. Le schema est
+    # cree et fait evoluer par Flyway seul ; validate verifie simplement que
+    # les entites correspondent aux migrations.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  # B4 : jamais de page d'erreur par defaut ni de stack trace vers le client.
+  # Toutes les erreurs passent par le @RestControllerAdvice (issue #10).
+  mvc:
+    problemdetails:
+      enabled: false
+
+server:
+  port: 8080
+  error:
+    include-stacktrace: never
+    include-message: never
+    whitelabel:
+      enabled: false
+
+presence48:
+  # RG1 : un code de presence expire 15 minutes apres l'ouverture de la session.
+  duree-validite-code: PT15M
+  # RG17 : cinq echecs consecutifs bloquent l'etudiant deux minutes (issue #15).
+  echecs-avant-blocage: 5
+  duree-blocage: PT2M
+
+logging:
+  level:
+    org.flywaydb: INFO
