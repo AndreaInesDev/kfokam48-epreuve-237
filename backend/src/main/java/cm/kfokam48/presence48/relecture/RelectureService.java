@@ -1,11 +1,13 @@
 package cm.kfokam48.presence48.relecture;
 
 import cm.kfokam48.presence48.domaine.Relecture;
+import cm.kfokam48.presence48.referentiel.EtudiantRepository;
 import cm.kfokam48.presence48.domaine.StatutExercice;
 import cm.kfokam48.presence48.erreur.CodeErreur;
 import cm.kfokam48.presence48.erreur.ExceptionMetier;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +27,69 @@ public class RelectureService {
     private static final int LONGUEUR_MAX_COMMENTAIRE = 2000;
 
     private final RelectureRepository relectures;
+    private final EtudiantRepository etudiants;
     private final Clock horloge;
 
-    public RelectureService(RelectureRepository relectures, Clock horloge) {
+    public RelectureService(RelectureRepository relectures, EtudiantRepository etudiants,
+            Clock horloge) {
         this.relectures = relectures;
+        this.etudiants = etudiants;
         this.horloge = horloge;
+    }
+
+    /**
+     * EF8 — ce que ce relecteur doit encore rendre (RG16).
+     *
+     * <p>Sans cette operation, la contrainte F2 serait infaisable : rien ne
+     * dirait au relecteur quel exercice relire, puisque c'est le systeme qui le
+     * lui assigne (RG8) et qu'il ne le choisit pas.
+     *
+     * @throws ExceptionMetier {@code 404 ETUDIANT_INCONNU}
+     */
+    @Transactional(readOnly = true)
+    public List<RelectureATraiterDto> aRendrePar(Long relecteurId) {
+        if (!etudiants.existsById(relecteurId)) {
+            throw new ExceptionMetier(CodeErreur.ETUDIANT_INCONNU);
+        }
+        return relectures.findByRelecteurIdAndRendueAtIsNullOrderByAssigneeAtAsc(relecteurId)
+                .stream()
+                .map(RelectureService::versDto)
+                .toList();
+    }
+
+    /**
+     * RG12 — le relecteur ouvre l'exercice : la relecture commence, et l'auteur
+     * ne peut plus remplacer son lien. Idempotent : un second appel ne deplace
+     * pas l'instant de premiere ouverture.
+     *
+     * @throws ExceptionMetier {@code 404 RELECTURE_INCONNUE},
+     *     {@code 403 RELECTURE_NON_ASSIGNEE} ou {@code 409 RELECTURE_DEJA_RENDUE}
+     */
+    @Transactional
+    public RelectureATraiterDto ouvrir(Long relectureId, Long relecteurId) {
+        Relecture relecture = relectures.findById(relectureId)
+                .orElseThrow(() -> new ExceptionMetier(CodeErreur.RELECTURE_INCONNUE));
+
+        if (relecteurId != null && !relecteurId.equals(relecture.getRelecteur().getId())) {
+            throw new ExceptionMetier(CodeErreur.RELECTURE_NON_ASSIGNEE);
+        }
+        if (relecture.estRendue()) {
+            throw new ExceptionMetier(CodeErreur.RELECTURE_DEJA_RENDUE);
+        }
+
+        relecture.ouvrir(OffsetDateTime.now(horloge));
+        // D4 : l'exercice passe de EN_ATTENTE_RELECTURE a EN_COURS_DE_RELECTURE.
+        relecture.getExercice().changerStatut(StatutExercice.EN_COURS_DE_RELECTURE);
+        return versDto(relecture);
+    }
+
+    private static RelectureATraiterDto versDto(Relecture relecture) {
+        return new RelectureATraiterDto(
+                relecture.getId(),
+                relecture.getExercice().getId(),
+                relecture.getExercice().getLien(),
+                relecture.getExercice().getSession().getTitre(),
+                relecture.estCommencee());
     }
 
     /**
