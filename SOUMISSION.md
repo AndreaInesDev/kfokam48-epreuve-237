@@ -44,10 +44,24 @@ installé, dont le test unitaire de RG2 sur mille tirages au sort et les tests
 d'intégration de tous les codes d'erreur du contrat. Vérifié de bout en bout contre
 le vrai PostgreSQL avant de soumettre.
 
+**L'étape 3.** Enveloppe obtenue à 17h37. Le bug signalé par le client a été diagnostiqué,
+reproduit par un test qui échoue, puis corrigé — issue `#34` ouverte **avant** le premier
+commit de code, correctif dans sa propre branche et sa propre pull request. Ce n'était pas
+la contrainte d'unicité qu'on soupçonnerait, mais une régression que j'avais introduite
+moi-même : le retirage au sort de RG20 annulait une présence valide par ricochet
+transactionnel. Le changement de besoin — deux relecteurs par exercice, moyenne des deux,
+provisoire si une seule est rendue — a été traité dans une **seconde** branche et une
+seconde pull request : migration `V3` ajoutée sans jamais modifier les précédentes, cahier
+des charges en v1.4, diagrammes D2 et D4 corrigés, contrat en v1.2.
+
 **Ce qui ne fonctionne pas.** Rien de ce qui est livré n'est en échec connu.
+L'implémentation du double tirage et du calcul de moyenne provisoire n'est pas codée :
+elle reste en `#36` et `#37`, et le choix est justifié en section 10 du cahier des charges.
+J'ai livré ce qui fige la décision et ce qui est irréversible en base — l'analyse, la
+migration, le contrat — plutôt qu'un service qui contredirait le schéma.
 
 **Ce que j'ai volontairement laissé de côté, et pourquoi.** Quatre issues restent
-ouvertes, priorisées et commentées une par une sur le dépôt : `#12` ajout manuel
+ouvertes avant l'étape 3, priorisées et commentées une par une sur le dépôt : `#12` ajout manuel
 d'une présence, `#13` remplacement du lien d'un exercice, `#14` consultation de sa
 note par l'étudiant — priorité **Should** — et `#15` blocage après cinq codes
 erronés — priorité **Could**. L'ordre de sacrifice était arrêté d'avance en section
@@ -55,6 +69,14 @@ erronés — priorité **Could**. L'ordre de sacrifice était arrêté d'avance 
 particulier a été écartée pour deux raisons écrites dès l'étape 1 : c'est une
 protection de confort et non de sécurité, puisque sans authentification (Q1) elle se
 contourne en changeant d'identifiant, et elle exigerait une révision du diagramme D2.
+Les issues `#36` et `#37`, nées du changement de l'étape 3, passent **devant** elles :
+un `Must` du client vaut plus qu'un `Should` que je m'étais donné.
+
+**Sur l'ordre des jalons.** `[JALON] v1.0` a été posé à 17h31, avant que l'enveloppe ne me
+parvienne, pour sécuriser une soumission complète avant la fermeture de la plateforme. Le
+travail de l'étape 3 apparaît donc après ce jalon dans l'historique. C'est un compromis
+assumé face à l'échéance, consigné dans le journal : je préférais une soumission valide
+sans l'étape 3 à une étape 3 parfaite non soumise.
 
 **Une erreur que j'assume.** J'ai fusionné une pull request sans voir que le build
 échouait, et `main` est resté cassé quelques minutes. Réparé par une pull request
