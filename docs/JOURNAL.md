@@ -71,11 +71,56 @@ l'expliquer ici plutôt que de réécrire l'historique de `main`.
 
 ## Étape 2 — Première version
 
-**Fait :**
+**Fait :** les onze exigences **Must** livrées, une branche et une pull request par
+issue, chaque issue fermée par son commit. Backend Spring Boot complet : les cinq
+opérations imposées du contrat plus neuf opérations ajoutées, schéma versionné par
+Flyway avec un jeu de démonstration, **103 tests** dont le test unitaire de RG2 et
+le test d'intégration des codes d'erreur exigés par `B6`. Frontend Angular : les
+trois écrans de `F2`, une couche d'appels API dédiée, états de chargement et
+d'erreur. Trois issues ouvertes en cours de route (`#28`, `#29`, `#30`) pour rendre
+le frontend traçable : le backlog initial mélangeait API et interface dans les
+mêmes exigences, et le code des écrans ne se rattachait à aucun ticket.
 
-**Bloqué :**
+**Bloqué :** trois choses, environ 40 minutes au total.
 
-**IA :**
+*Deux défauts de conformité au contrat, trouvés par les tests et non par relecture.*
+`400 LIEN_INVALIDE` et `400 NOTE_INVALIDE` sont exigés par le contrat, mais une
+violation de contrainte déclarative Jakarta ressort en `REQUETE_INVALIDE` : RG10 et
+RG3 sont donc vérifiées dans les services, qui peuvent nommer le code exact. Et
+Jackson acceptait une note de `12.5` en la tronquant silencieusement en 12 —
+`accept-float-as-int` désactivé, un arrondi silencieux sur une note serait pire
+qu'un refus.
+
+*Un défaut d'isolation des tests.* H2 en mémoire nommé `presence48` survivait d'un
+contexte Spring à l'autre dans la même JVM : les classes de test se marchaient sur
+les pieds. Révélé par un test du tableau qui lisait des données déposées par une
+autre classe. Corrigé à la racine, une base par contexte.
+
+*Une erreur de ma part.* J'ai fusionné la PR `#26` sans voir que le build échouait,
+et `main` est resté cassé quelques minutes. Réparé par une PR dédiée qui dit ce qui
+s'est passé. Les tests de clôture dépendaient de leur ordre d'exécution — le défaut
+était dans les tests, pas dans la règle.
+
+**IA :** utilisée pour écrire l'essentiel du code. Ce que j'ai vérifié, et comment :
+
+- **La conformité au contrat, par un test qui lit le contrat.** `CodeErreurContratTest`
+  ouvre `api/contrat.yaml` et vérifie que l'énumération Java en est le miroir exact,
+  code par code et statut par statut, dans les deux sens. Une dérive fait échouer le
+  build, pas une relecture humaine.
+- **Les réponses de l'API, champ par champ.** Pour chaque opération imposée, un test
+  vérifie que le corps de succès contient *exactement* les champs du contrat, ni plus
+  ni moins. C'est ce qui a montré que l'IA ajoutait volontiers des champs « utiles »
+  hors contrat.
+- **Les règles de gestion, pas le code qui les porte.** RG2 est testée sur mille
+  tirages au sort, RG1 en mesurant l'écart entre ouverture et expiration, RG18 en
+  exigeant `null` et non zéro. Une règle qu'on ne peut pas faire échouer n'est pas
+  testée.
+- **Le jeu de démonstration est testé comme du code.** Sept assertions vérifient
+  qu'il respecte RG1, RG2, RG8, RG15, RG18 et RG20 : des données de démonstration qui
+  violeraient les règles seraient pires que pas de données.
+- **Ce que j'ai refusé.** L'IA proposait d'ajouter `relecteurId` en champ obligatoire
+  du corps de `POST /api/relectures/{id}`, ce qui aurait modifié une opération
+  imposée. Retenu en champ *facultatif* : le corps du contrat reste valable tel quel.
 
 ---
 
