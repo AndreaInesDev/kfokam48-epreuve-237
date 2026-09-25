@@ -46,6 +46,17 @@ ignoré par Git, aucun secret ne doit être commité.
 Au premier démarrage du backend, **Flyway crée le schéma et charge les données de démonstration**.
 Vous n'ouvrez donc jamais une application vide.
 
+## Les trois écrans
+
+| Écran | Adresse | Ce qu'on y fait |
+|---|---|---|
+| Formateur | <http://localhost:4200/formateur> | ouvrir une session et lire son code, clôturer, consulter le tableau |
+| Étudiant | <http://localhost:4200/etudiant> | se choisir dans la liste, marquer sa présence, déposer son exercice |
+| Relecteur | <http://localhost:4200/relecteur> | voir ses relectures assignées, ouvrir un exercice, rendre une note |
+
+Le frontend appelle l'API via un proxy : `/api` est redirigé vers
+`http://localhost:8080`, il n'y a donc aucune adresse à configurer.
+
 ## Choix du frontend
 
 **Angular**, parce que son injection de dépendances impose naturellement une couche de services
@@ -78,6 +89,10 @@ formateur, et un exercice sans relecteur.
 ```bash
 cd backend && ./mvnw test
 ```
+
+**103 tests**, dont le test unitaire de la règle RG2 — un étudiant ne relit jamais son propre
+exercice, vérifié sur mille tirages au sort — et les tests d'intégration de tous les codes
+d'erreur du contrat.
 
 Ils tournent **sans Postgres** : le profil de test rejoue les mêmes migrations Flyway sur H2 en mode
 compatibilité PostgreSQL. Vous n'avez donc pas besoin d'avoir lancé `docker compose` pour les
