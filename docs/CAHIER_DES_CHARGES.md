@@ -1,7 +1,7 @@
 # Cahier des charges — Présence48
 
 **Auteur :** Andrea · **Matricule :** 237 · **Centre :** Yaoundé
-**Version :** 1.1 · **Date :** 25 septembre 2026
+**Version :** 1.2 · **Date :** 25 septembre 2026
 **Frontend choisi :** Angular, parce que son injection de dépendances impose naturellement une couche de services séparée des composants — exactement la contrainte F3 — et que son client HTTP typé rend la conformité au contrat d'API vérifiable à la compilation.
 
 ---
@@ -93,7 +93,7 @@ maintenant que c'est un choix, pas un oubli.
 | **EF3** | L'étudiant marque sa présence à l'aide d'un code | Quand je saisis un code valide et non expiré, alors je reçois `201` et ma présence apparaît dans le tableau du formateur avec la source `ETUDIANT` | Must |
 | **EF4** | Le marquage de présence refuse les cas invalides | Quand le code est inconnu je reçois `400 CODE_INCONNU` ; quand il a plus de 15 minutes je reçois `410 CODE_EXPIRE` ; quand je suis déjà présent je reçois `409 DEJA_PRESENT` | Must |
 | **EF5** | L'étudiant dépose le lien de son exercice pour une session | Quand j'envoie un lien `http(s)` valide pour une session non clôturée où je suis présent, alors je reçois `201` avec le statut de l'exercice | Must |
-| **EF6** | Le dépôt d'exercice refuse les cas invalides | Quand le lien n'est pas une URL `http(s)` je reçois `400 LIEN_INVALIDE` ; quand j'ai déjà déposé pour cette session je reçois `409 EXERCICE_DEJA_DEPOSE` | Must |
+| **EF6** | Le dépôt d'exercice refuse les cas invalides | Quand le lien n'est pas une URL `http(s)` je reçois `400 LIEN_INVALIDE` ; quand j'ai déjà déposé pour cette session je reçois `409 EXERCICE_DEJA_DEPOSE` ; quand je n'étais pas présent à la session je reçois `409 ETUDIANT_NON_PRESENT` ; quand la session est clôturée je reçois `409 SESSION_CLOTUREE` | Must |
 | **EF7** | Le système assigne automatiquement un relecteur à chaque exercice déposé | Quand un exercice est déposé et qu'au moins un autre étudiant est présent à la session, alors une relecture est créée au nom d'un de ces étudiants tiré au sort, jamais l'auteur | Must |
 | **EF8** | Le relecteur consulte les exercices qu'il doit relire | Quand je demande mes relectures, alors je reçois celles qui me sont assignées et ne sont pas encore rendues, avec le lien de l'exercice à relire ; l'ouverture d'une relecture marque le moment où elle commence (RG12) | Must |
 | **EF9** | Le relecteur rend une note entière sur 20 et un commentaire | Quand j'envoie une note entière entre 0 et 20 et un commentaire pour une relecture qui m'est assignée et non rendue, alors je reçois `200` et la relecture passe au statut rendu | Must |
@@ -144,6 +144,7 @@ maintenant que c'est un choix, pas un oubli.
 | **RG20** | Si aucun étudiant présent n'est éligible au tirage, l'exercice reste en attente d'assignation et le tirage est retenté au prochain dépôt ou à la prochaine présence enregistrée sur la session | Hypothèse, section 7 |
 | **RG21** | Un étudiant appartient à une et une seule promotion | Déduit de Q16 et du contrat (`GET /api/tableau?promotionId=`) |
 | **RG22** | La fin d'une session (expiration du code, 15 min) et sa clôture (acte du formateur) sont deux moments distincts | Hypothèse, section 7 |
+| **RG23** | Un étudiant ne peut déposer un exercice que pour une session à laquelle sa présence est enregistrée | Hypothèse, section 7 |
 
 ## 7. Zones d'ombre, hypothèses et contradictions
 
@@ -158,6 +159,7 @@ maintenant que c'est un choix, pas un oubli.
 | **Quand le relecteur est-il tiré au sort ?** Q7 dit qui le choisit, jamais à quel moment | Q7 — hypothèse | Au moment du dépôt de l'exercice. C'est le seul instant où l'on connaît à la fois l'exercice à relire et la liste des présents | RG8. Le tirage est donc un effet de bord de `POST /api/exercices` |
 | **Et s'il n'y a personne à tirer au sort ?** Q7 impose de choisir parmi les présents, Q5 exclut l'auteur : si l'auteur est le seul présent, l'ensemble est vide | Q5 + Q7 — hypothèse | L'exercice reste au statut `EN_ATTENTE_ASSIGNATION` et le tirage est retenté à chaque nouvelle présence ou nouveau dépôt sur la session. Aucun échec n'est renvoyé à l'étudiant, qui n'y peut rien | RG20. Statut supplémentaire dans le cycle de vie de l'exercice (diagramme D4) |
 | **À partir de quand une relecture « a-t-elle commencé » ?** Q13 autorise le remplacement du lien « tant que personne n'a commencé à le relire », sans dire ce que cela veut dire. Comme le relecteur est assigné dès le dépôt (RG8), l'assignation ne peut pas être ce moment — sinon un remplacement n'aurait jamais été possible et Q13 serait sans objet | Q13 — hypothèse | Une relecture commence quand son relecteur **ouvre l'exercice pour la première fois**. Une colonne `consultee_at` porte cet instant | RG12, EF14 et l'état `EN_COURS_DE_RELECTURE` du diagramme D4. Le remplacement refusé renvoie `409 RELECTURE_COMMENCEE` |
+| **Faut-il être présent à une session pour y déposer un exercice ?** La demande lie l'exercice à une session sans jamais dire si l'auteur devait y assister | Q7, Q12, Q14 — hypothèse | Oui, la présence est requise (RG23), et le dépôt sans présence renvoie `409 ETUDIANT_NON_PRESENT`. Trois appuis : Q7 ne tire les relecteurs que parmi les présents, donc la session est bien un ensemble de présents ; Q12 autorise un dépôt tardif mais parle de « certains n'ont pas de connexion le soir même », c'est-à-dire de gens qui étaient là ; et Q14 permet au formateur de rattraper une présence manquante, ce qui règle le cas du téléphone en panne sans ouvrir le dépôt à un absent | RG23. Un étudiant absent qui doit rendre son travail passe par le formateur, qui ajoute sa présence (EF13) |
 | **Le relecteur est-il un acteur ou un état ?** Question posée par le modèle de cahier des charges, que la demande ne tranche pas | Hypothèse | Un étudiant dans un état, pas un acteur distinct. Justifié en section 2 | Aucune table `Relecteur` en D2 ; une clé `relecteur_id` sur `relecture` |
 | **Que vaut la moyenne d'un étudiant qui n'a reçu aucune note ?** Q16 demande « la moyenne des notes reçues » sans dire ce qu'elle vaut quand il n'y en a pas | Q16 + contrat | `null`, et non `0`. Le contrat déclare d'ailleurs `moyenne` comme `nullable` | RG18. Un `0` affiché laisserait croire à un travail noté zéro, ce qui est faux et injuste |
 | **Une relecture non rendue compte-t-elle dans la moyenne ?** Q11 décrit l'exercice « en attente » sans préciser son effet sur le calcul | Q11 + Q16 — hypothèse | Non. Seules les relectures rendues entrent dans la moyenne ; les autres alimentent le compteur `relecturesEnAttente` | RG16, RG18 |
@@ -257,4 +259,5 @@ demande à un surveillant et non à un script.
 | Version | Quand | Ce qui a changé et pourquoi |
 |---|---|---|
 | 1 | 25 septembre 2026 | Version initiale, rédigée à l'étape 1 avant tout code |
+| 1.2 | 25 septembre 2026 | La rédaction du contrat d'API a mis au jour une hypothèse restée implicite : faut-il être présent pour déposer un exercice ? Tranchée (oui), RG23 ajoutée, EF6 complétée. Toujours à l'étape 1, avant tout code |
 | 1.1 | 25 septembre 2026 | Le tracé des diagrammes D2 et D4 a révélé une zone d'ombre de plus : Q13 ne dit pas à partir de quand une relecture « a commencé ». Tranchée (première ouverture par le relecteur), RG12 précisée, EF8 complétée. Toujours à l'étape 1, avant tout code |
