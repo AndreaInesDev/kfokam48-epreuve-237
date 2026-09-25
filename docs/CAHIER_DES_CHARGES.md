@@ -1,6 +1,6 @@
 # Cahier des charges — Présence48
 
-**Auteur :** Andrea · **Matricule :** 237 · **Centre :** Yaoundé
+**Auteur :** Otele Andrea Ines · **Matricule :** 237 · **Centre :** Yaoundé
 **Version :** 1.2 · **Date :** 25 septembre 2026
 **Frontend choisi :** Angular, parce que son injection de dépendances impose naturellement une couche de services séparée des composants — exactement la contrainte F3 — et que son client HTTP typé rend la conformité au contrat d'API vérifiable à la compilation.
 

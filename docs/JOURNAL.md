@@ -1,4 +1,4 @@
-# Journal de bord — matricule 237
+# Journal de bord — Otele Andrea Ines · matricule 237
 
 > Une entrée **par étape**, écrite au moment où elle se termine.
 > **Fait** — ce qui vient d'être terminé · **Bloqué** — ce qui a coûté du temps, et combien ·
