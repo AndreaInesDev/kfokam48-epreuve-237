@@ -138,16 +138,52 @@ s'est passé. Les tests de clôture dépendaient de leur ordre d'exécution — 
 
 ## Étape 4 — Version finale
 
-**Fait :**
+**Fait :** `CHANGELOG.md` écrit issue par issue, y compris les défauts corrigés en
+cours d'étape 2 et ce qui reste ouvert. `README` complété des trois écrans et de
+leurs adresses. Backlog restant trié : les quatre issues non livrées portent chacune
+un commentaire qui dit son rang dans l'ordre de sacrifice, ce qui existe déjà et ce
+qui manque. Ménage : `backend/.gitkeep` retiré, journal des révisions du cahier des
+charges remis dans l'ordre. `[JALON] v1.0` poussé.
 
-**Bloqué :**
+**Bloqué :** deux vérifications ont pris du temps, et les deux valaient la peine.
 
-**IA :**
+*Le build de production du frontend plantait en « Bus error ».* J'ai d'abord cru à un
+manque de mémoire, puis le build de développement a compilé les trois écrans sans
+erreur — donc le code était bon. La vraie cause était un `node_modules` corrompu par
+le `npm install` interrompu quand la session a été coupée. `npm ci` a réglé le
+problème, et `npm run build` passe.
+
+*Le clone vierge, vérifié pour de vrai.* Cloné le dépôt dans un dossier vide, vérifié
+que `mvnw` est exécutable, que `docker compose config` est valide, et lancé les 103
+tests depuis ce clone sans PostgreSQL. C'est la seule façon de savoir si le `README`
+suffit — le relire ne prouve rien.
+
+**IA :** lui ai demandé le `CHANGELOG` à partir de l'historique Git. Vérifié en
+relisant chaque entrée contre `git log` : elle avait inventé deux fonctionnalités
+plausibles mais non livrées, et omis les défauts corrigés en route. Un changelog qui
+ne raconte que les réussites n'est pas cohérent avec un historique qui contient des
+`fix:`.
 
 ---
 
 ## Étape 5 — Soumission
 
-**Fait :**
+**Fait :** `SOUMISSION.md` rempli, dépôt vérifié public, hash complet relevé après le
+dernier push. Périmètre annoncé honnêtement : ce qui fonctionne, ce qui n'a pas été
+livré et pourquoi, et l'erreur de `main` cassé quelques minutes.
 
-**Ce que je referais autrement avec une journée de plus :**
+**Ce que je referais autrement avec une journée de plus :** trois choses.
+
+D'abord, **je séparerais l'API de l'interface dès le backlog initial**. Mes onze
+premières issues mélangeaient les deux : leurs critères d'acceptation parlaient
+d'écrans alors que je ne livrais que des endpoints. J'ai dû ouvrir trois issues de
+plus en cours de route pour rendre le frontend traçable. Une issue par exigence
+fonctionnelle *et par couche* aurait évité ça.
+
+Ensuite, **je vérifierais le build de production plus tôt**. Je l'ai découvert cassé
+à vingt minutes de la fin, et la cause n'avait rien à voir avec mon code.
+
+Enfin, **je ne ferais plus confiance à une chaîne de commandes pour lire un échec de
+build**. C'est comme ça que `main` est resté cassé : mon `git merge` s'est exécuté
+parce que le `grep` qui précédait avait réussi, pas parce que les tests étaient
+verts. Lire le résultat, puis décider — jamais les deux dans la même commande.
