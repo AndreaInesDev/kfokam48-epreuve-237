@@ -259,6 +259,6 @@ demande à un surveillant et non à un script.
 | Version | Quand | Ce qui a changé et pourquoi |
 |---|---|---|
 | 1 | 25 septembre 2026 | Version initiale, rédigée à l'étape 1 avant tout code |
-| 1.2 | 25 septembre 2026 | La rédaction du contrat d'API a mis au jour une hypothèse restée implicite : faut-il être présent pour déposer un exercice ? Tranchée (oui), RG23 ajoutée, EF6 complétée. Toujours à l'étape 1, avant tout code |
 | 1.1 | 25 septembre 2026 | Le tracé des diagrammes D2 et D4 a révélé une zone d'ombre de plus : Q13 ne dit pas à partir de quand une relecture « a commencé ». Tranchée (première ouverture par le relecteur), RG12 précisée, EF8 complétée. Toujours à l'étape 1, avant tout code |
+| 1.2 | 25 septembre 2026 | La rédaction du contrat d'API a mis au jour une hypothèse restée implicite : faut-il être présent pour déposer un exercice ? Tranchée (oui), RG23 ajoutée, EF6 complétée. Toujours à l'étape 1, avant tout code |
 | 1.3 | 25 septembre 2026 | L'issue #10 (format d'erreur) a mis au jour une contradiction interne : ENF4 exige que **toute** erreur réponde en `{ code, message }`, mais le catalogue `CodeErreur` ne listait que les cas métier — ni route inconnue, ni verbe refusé, ni plantage. Ces cas étaient donc condamnés à sortir sur la page d'erreur par défaut de Spring, que la même ENF4 interdit. Cinq codes ajoutés (`ROUTE_INCONNUE`, `METHODE_NON_SUPPORTEE`, `MEDIA_NON_TRAITABLE`, `MEDIA_NON_ACCEPTE`, `ERREUR_INTERNE`), les cinq opérations imposées restant intactes. Étape 2 |
