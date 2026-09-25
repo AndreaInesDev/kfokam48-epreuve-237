@@ -32,27 +32,24 @@ class CloturerSessionTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("200, la session est marquee cloturee, et les depots y sont coupes (RG19)")
-    void cloturerCoupeLesDepots() throws Exception {
-        // Avant la cloture, l'etudiant 6 peut deposer sur la session 2 (RG11).
+    @DisplayName("200, puis depots ET rendus coupes sur cette session (RG19)")
+    void cloturerCoupeLesDepotsEtLesRendus() throws Exception {
+        // Les deux effets de RG19 sont verifies dans UN seul test : la cloture
+        // n'est possible qu'une fois par session, et deux tests qui cloturent la
+        // meme session dependraient de leur ordre d'execution.
         mockMvc.perform(post("/api/sessions/2/cloture"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cloturee").value(true))
                 .andExpect(jsonPath("$.clotureeAt").exists());
 
-        // Apres, le meme depot est refuse.
+        // Le depot que RG11 autorisait encore avant la cloture est desormais refuse.
         mockMvc.perform(post("/api/exercices").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"sessionId\": 2, \"etudiantId\": 6,"
                                 + " \"lien\": \"https://github.com/demo/trop-tard\" }"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("SESSION_CLOTUREE"));
-    }
 
-    @Test
-    @DisplayName("la cloture coupe aussi les rendus de relecture (RG19)")
-    void cloturerCoupeLesRendus() throws Exception {
-        mockMvc.perform(post("/api/sessions/2/cloture")).andExpect(status().isOk());
-
+        // Le rendu de relecture aussi.
         mockMvc.perform(post("/api/relectures/7").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"note\": 15, \"commentaire\": \"Trop tard.\" }"))
                 .andExpect(status().isConflict())
@@ -62,6 +59,8 @@ class CloturerSessionTest {
     @Test
     @DisplayName("session deja cloturee : 409 SESSION_DEJA_CLOTUREE")
     void dejaCloturee() throws Exception {
+        // La session 1 est cloturee dans le jeu de demonstration : ce test ne
+        // cloture rien, il est donc independant des autres.
         mockMvc.perform(post("/api/sessions/1/cloture"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("SESSION_DEJA_CLOTUREE"));
@@ -78,10 +77,9 @@ class CloturerSessionTest {
     @Test
     @DisplayName("RG16 — une session cloturee laisse ses exercices non relus visibles")
     void lesExercicesNonRelusRestentVisibles() throws Exception {
-        mockMvc.perform(post("/api/sessions/2/cloture")).andExpect(status().isOk());
-
-        // Essomba Clarisse doit toujours ses deux relectures : la cloture est un
-        // etat de la session, pas des exercices (D4).
+        // La session 1 est deja cloturee, et l'exercice 5 qu'elle porte n'a
+        // jamais ete relu : la cloture est un etat de la SESSION, pas des
+        // exercices (D4). Aucune cloture n'est faite ici, le test est independant.
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/api/tableau").param("promotionId", "1"))
                 .andExpect(status().isOk())
