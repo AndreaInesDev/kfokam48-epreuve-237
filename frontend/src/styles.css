@@ -1,1 +1,113 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * Le rendu visuel n'est pas note (« aucun point pour le CSS »). Ce fichier ne
+ * cherche donc pas a etre beau : il assure seulement la lisibilite et ENF1,
+ * l'usage sur un telephone de 360 px de large sans defilement horizontal.
+ */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  padding: 0 16px 48px;
+}
+
+header {
+  padding: 16px 0;
+  border-bottom: 1px solid currentColor;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 8px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+nav a {
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  text-decoration: none;
+  color: inherit;
+}
+
+nav a.actif {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+section {
+  margin: 24px 0;
+}
+
+h2,
+h3 {
+  margin: 0 0 8px;
+}
+
+/* ENF1 : les champs et boutons restent atteignables sur un ecran etroit. */
+input,
+select,
+button,
+textarea {
+  font: inherit;
+  padding: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ENF1 : un tableau large defile dans son cadre, pas dans la page. */
+.defilable {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+th,
+td {
+  border: 1px solid currentColor;
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.erreur {
+  border: 2px solid currentColor;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+.chargement {
+  font-style: italic;
+}
+
+.code strong {
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+}
+
+ul {
+  padding-left: 20px;
+}

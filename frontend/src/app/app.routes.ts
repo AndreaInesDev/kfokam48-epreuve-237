@@ -1,3 +1,18 @@
 import { Routes } from '@angular/router';
 
-export const routes: Routes = [];
+/**
+ * Les trois écrans exigés par la contrainte F2, un par acteur.
+ *
+ * Chargés à la demande : le frontend n'a pas besoin de charger l'écran formateur
+ * pour qu'un étudiant marque sa présence sur son téléphone (ENF1).
+ */
+export const routes: Routes = [
+  { path: '', redirectTo: 'formateur', pathMatch: 'full' },
+  {
+    path: 'formateur',
+    title: 'Formateur — Présence48',
+    loadComponent: () => import('./formateur/formateur').then((m) => m.Formateur),
+  },
+  // Les routes /etudiant et /relecteur arrivent avec les issues #29 et #30.
+  { path: '**', redirectTo: 'formateur' },
+];
