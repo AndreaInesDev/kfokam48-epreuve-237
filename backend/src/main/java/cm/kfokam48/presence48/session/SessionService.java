@@ -67,6 +67,30 @@ public class SessionService {
                 session.getOuvertureAt(), session.getExpirationAt());
     }
 
+    /**
+     * EF12 — le formateur cloture une session.
+     *
+     * <p>C'est l'operation que la demande du client ne contenait pas, alors que
+     * Q10, Q12 et Q13 en dependent toutes les trois. Elle est distincte de
+     * l'expiration du code (RG22) : une session peut avoir un code expire depuis
+     * des heures et rester ouverte aux depots tardifs (Q12).
+     *
+     * @throws ExceptionMetier {@code 404 SESSION_INCONNUE} ou
+     *     {@code 409 SESSION_DEJA_CLOTUREE}
+     */
+    @Transactional
+    public SessionDto cloturer(Long sessionId) {
+        SessionCours session = sessions.findById(sessionId)
+                .orElseThrow(() -> new ExceptionMetier(CodeErreur.SESSION_INCONNUE));
+
+        if (session.estCloturee()) {
+            throw new ExceptionMetier(CodeErreur.SESSION_DEJA_CLOTUREE);
+        }
+
+        session.cloturer(OffsetDateTime.now(horloge));
+        return versDto(session);
+    }
+
     /** Operation ajoutee : les sessions d'une promotion, la plus recente d'abord. */
     @Transactional(readOnly = true)
     public List<SessionDto> listerParPromotion(Long promotionId) {
