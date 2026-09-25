@@ -16,7 +16,7 @@
 | | |
 |---|---|
 | Dépôt (public) | `https://github.com/AndreaInesDev/kfokam48-epreuve-237` |
-| Commit final — hash complet, 40 caractères | _à compléter_ |
+| Commit final — hash complet, 40 caractères | `aa4f458beb4d3b6a15e77ab6d73bdef58d07bb7c` |
 | Branche | `main` |
 
 ## Technique
