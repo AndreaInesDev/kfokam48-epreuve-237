@@ -18,6 +18,10 @@ export const routes: Routes = [
     title: 'Étudiant — Présence48',
     loadComponent: () => import('./etudiant/etudiant').then((m) => m.Etudiant),
   },
-  // La route /relecteur arrive avec l'issue #30.
+  {
+    path: 'relecteur',
+    title: 'Relecteur — Présence48',
+    loadComponent: () => import('./relecteur/relecteur').then((m) => m.Relecteur),
+  },
   { path: '**', redirectTo: 'formateur' },
 ];
