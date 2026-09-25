@@ -1,7 +1,7 @@
 # Cahier des charges — Présence48
 
 **Auteur :** Andrea · **Matricule :** 237 · **Centre :** Yaoundé
-**Version :** 1 · **Date :** 25 septembre 2026
+**Version :** 1.1 · **Date :** 25 septembre 2026
 **Frontend choisi :** Angular, parce que son injection de dépendances impose naturellement une couche de services séparée des composants — exactement la contrainte F3 — et que son client HTTP typé rend la conformité au contrat d'API vérifiable à la compilation.
 
 ---
@@ -95,7 +95,7 @@ maintenant que c'est un choix, pas un oubli.
 | **EF5** | L'étudiant dépose le lien de son exercice pour une session | Quand j'envoie un lien `http(s)` valide pour une session non clôturée où je suis présent, alors je reçois `201` avec le statut de l'exercice | Must |
 | **EF6** | Le dépôt d'exercice refuse les cas invalides | Quand le lien n'est pas une URL `http(s)` je reçois `400 LIEN_INVALIDE` ; quand j'ai déjà déposé pour cette session je reçois `409 EXERCICE_DEJA_DEPOSE` | Must |
 | **EF7** | Le système assigne automatiquement un relecteur à chaque exercice déposé | Quand un exercice est déposé et qu'au moins un autre étudiant est présent à la session, alors une relecture est créée au nom d'un de ces étudiants tiré au sort, jamais l'auteur | Must |
-| **EF8** | Le relecteur consulte les exercices qu'il doit relire | Quand je demande mes relectures, alors je reçois celles qui me sont assignées et ne sont pas encore rendues, avec le lien de l'exercice à relire | Must |
+| **EF8** | Le relecteur consulte les exercices qu'il doit relire | Quand je demande mes relectures, alors je reçois celles qui me sont assignées et ne sont pas encore rendues, avec le lien de l'exercice à relire ; l'ouverture d'une relecture marque le moment où elle commence (RG12) | Must |
 | **EF9** | Le relecteur rend une note entière sur 20 et un commentaire | Quand j'envoie une note entière entre 0 et 20 et un commentaire pour une relecture qui m'est assignée et non rendue, alors je reçois `200` et la relecture passe au statut rendu | Must |
 | **EF10** | Le rendu d'une relecture refuse les cas invalides | Quand la note est hors 0–20 ou non entière je reçois `400 NOTE_INVALIDE` ; quand l'exercice est le mien je reçois `403 AUTO_RELECTURE` ; quand la relecture est déjà rendue je reçois `409 RELECTURE_DEJA_RENDUE` | Must |
 | **EF11** | Le formateur consulte le tableau récapitulatif de sa promotion | Quand je demande le tableau d'une promotion existante, alors je reçois pour chaque étudiant son nombre de présences, son nombre d'exercices déposés, la moyenne des notes reçues et le nombre de relectures qu'il doit encore rendre | Must |
@@ -133,7 +133,7 @@ maintenant que c'est un choix, pas un oubli.
 | **RG9** | Un étudiant ne dépose qu'un seul exercice par session | Contrat (`409 EXERCICE_DEJA_DEPOSE`) |
 | **RG10** | Le lien d'un exercice est une URL `http` ou `https` syntaxiquement valide | Contrat (`400 LIEN_INVALIDE`) |
 | **RG11** | Un exercice peut être déposé après la fin de la session, jusqu'à la clôture de celle-ci | Q12 |
-| **RG12** | Le lien d'un exercice peut être remplacé tant que sa relecture n'a pas commencé | Q13 |
+| **RG12** | Le lien d'un exercice peut être remplacé tant que son relecteur ne l'a pas ouvert, c'est-à-dire tant que `relecture.consultee_at` est nul | Q13, moment précisé en section 7 |
 | **RG13** | Une relecture validée est définitive : ni la note ni le commentaire ne peuvent plus être modifiés | Q15, contradiction avec Q10 tranchée en section 7 |
 | **RG14** | L'auteur d'un exercice voit la note et le commentaire reçus, jamais l'identité de son relecteur | Q8 |
 | **RG15** | Une présence ajoutée par le formateur porte la source `FORMATEUR` ; une présence saisie par l'étudiant porte la source `ETUDIANT` | Q14 |
@@ -157,6 +157,7 @@ maintenant que c'est un choix, pas un oubli.
 | **Sur quoi s'accroche le blocage de Q4 ?** Cinq erreurs « et on le bloque » — mais sans authentification (Q1), il n'existe aucune identité fiable à bloquer | Q1 vs Q4 — hypothèse | Le compteur est tenu par `etudiantId` déclaré, et le refus renvoie `429 TROP_D_ESSAIS`. Protection de confort, pas de sécurité : sans authentification, elle est contournable en changeant d'identifiant, et nous l'écrivons plutôt que de laisser croire le contraire | RG17, EF16, priorité **Could** |
 | **Quand le relecteur est-il tiré au sort ?** Q7 dit qui le choisit, jamais à quel moment | Q7 — hypothèse | Au moment du dépôt de l'exercice. C'est le seul instant où l'on connaît à la fois l'exercice à relire et la liste des présents | RG8. Le tirage est donc un effet de bord de `POST /api/exercices` |
 | **Et s'il n'y a personne à tirer au sort ?** Q7 impose de choisir parmi les présents, Q5 exclut l'auteur : si l'auteur est le seul présent, l'ensemble est vide | Q5 + Q7 — hypothèse | L'exercice reste au statut `EN_ATTENTE_ASSIGNATION` et le tirage est retenté à chaque nouvelle présence ou nouveau dépôt sur la session. Aucun échec n'est renvoyé à l'étudiant, qui n'y peut rien | RG20. Statut supplémentaire dans le cycle de vie de l'exercice (diagramme D4) |
+| **À partir de quand une relecture « a-t-elle commencé » ?** Q13 autorise le remplacement du lien « tant que personne n'a commencé à le relire », sans dire ce que cela veut dire. Comme le relecteur est assigné dès le dépôt (RG8), l'assignation ne peut pas être ce moment — sinon un remplacement n'aurait jamais été possible et Q13 serait sans objet | Q13 — hypothèse | Une relecture commence quand son relecteur **ouvre l'exercice pour la première fois**. Une colonne `consultee_at` porte cet instant | RG12, EF14 et l'état `EN_COURS_DE_RELECTURE` du diagramme D4. Le remplacement refusé renvoie `409 RELECTURE_COMMENCEE` |
 | **Le relecteur est-il un acteur ou un état ?** Question posée par le modèle de cahier des charges, que la demande ne tranche pas | Hypothèse | Un étudiant dans un état, pas un acteur distinct. Justifié en section 2 | Aucune table `Relecteur` en D2 ; une clé `relecteur_id` sur `relecture` |
 | **Que vaut la moyenne d'un étudiant qui n'a reçu aucune note ?** Q16 demande « la moyenne des notes reçues » sans dire ce qu'elle vaut quand il n'y en a pas | Q16 + contrat | `null`, et non `0`. Le contrat déclare d'ailleurs `moyenne` comme `nullable` | RG18. Un `0` affiché laisserait croire à un travail noté zéro, ce qui est faux et injuste |
 | **Une relecture non rendue compte-t-elle dans la moyenne ?** Q11 décrit l'exercice « en attente » sans préciser son effet sur le calcul | Q11 + Q16 — hypothèse | Non. Seules les relectures rendues entrent dans la moyenne ; les autres alimentent le compteur `relecturesEnAttente` | RG16, RG18 |
@@ -256,3 +257,4 @@ demande à un surveillant et non à un script.
 | Version | Quand | Ce qui a changé et pourquoi |
 |---|---|---|
 | 1 | 25 septembre 2026 | Version initiale, rédigée à l'étape 1 avant tout code |
+| 1.1 | 25 septembre 2026 | Le tracé des diagrammes D2 et D4 a révélé une zone d'ombre de plus : Q13 ne dit pas à partir de quand une relecture « a commencé ». Tranchée (première ouverture par le relecteur), RG12 précisée, EF8 complétée. Toujours à l'étape 1, avant tout code |
