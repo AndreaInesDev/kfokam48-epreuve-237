@@ -1,0 +1,84 @@
+<h2>Étudiant</h2>
+
+@if (erreur()) {
+  <p class="erreur" role="alert">
+    <strong>{{ erreur()!.code }}</strong> — {{ erreur()!.message }}
+  </p>
+}
+@if (succes()) {
+  <p class="erreur" role="status">{{ succes() }}</p>
+}
+@if (chargement()) {
+  <p class="chargement" aria-live="polite">Chargement…</p>
+}
+
+<section>
+  <h3>Qui es-tu ?</h3>
+  <p>Aucun mot de passe : choisis ton nom dans la liste.</p>
+  <form>
+    <select
+      [ngModel]="promotionId()"
+      (ngModelChange)="choisirPromotion($event)"
+      name="promotion"
+      aria-label="Promotion">
+      @for (promotion of promotions(); track promotion.id) {
+        <option [value]="promotion.id">{{ promotion.nom }}</option>
+      }
+    </select>
+
+    <select
+      [ngModel]="etudiantId()"
+      (ngModelChange)="etudiantId.set($event)"
+      name="etudiant"
+      aria-label="Mon nom">
+      <option [ngValue]="null">— choisis ton nom —</option>
+      @for (etudiant of etudiants(); track etudiant.id) {
+        <option [value]="etudiant.id">{{ etudiant.nom }}</option>
+      }
+    </select>
+  </form>
+</section>
+
+@if (etudiantId() !== null) {
+  <section>
+    <h3>Marquer ma présence</h3>
+    <form (ngSubmit)="marquerPresence()">
+      <input
+        [ngModel]="code()"
+        (ngModelChange)="code.set($event)"
+        name="code"
+        placeholder="ABCD-2345"
+        autocomplete="off"
+        aria-label="Code de présence" />
+      <button type="submit" [disabled]="chargement()">Je suis présent</button>
+    </form>
+    <p>Le code expire 15 minutes après l'ouverture de la session.</p>
+  </section>
+
+  <section>
+    <h3>Déposer mon exercice</h3>
+    <form (ngSubmit)="deposerExercice()">
+      <select
+        [ngModel]="sessionId()"
+        (ngModelChange)="sessionId.set($event)"
+        name="session"
+        aria-label="Session">
+        <option [ngValue]="null">— choisis la session —</option>
+        @for (session of sessions(); track session.id) {
+          <option [value]="session.id">{{ session.titre }}</option>
+        }
+      </select>
+      <input
+        [ngModel]="lien()"
+        (ngModelChange)="lien.set($event)"
+        name="lien"
+        placeholder="https://github.com/…"
+        aria-label="Lien de mon exercice" />
+      <button type="submit" [disabled]="chargement()">Déposer</button>
+    </form>
+    <p>
+      Le dépôt reste possible après l'expiration du code, jusqu'à ce que le formateur clôture la
+      session.
+    </p>
+  </section>
+}

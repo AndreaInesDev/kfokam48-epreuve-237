@@ -13,6 +13,11 @@ export const routes: Routes = [
     title: 'Formateur — Présence48',
     loadComponent: () => import('./formateur/formateur').then((m) => m.Formateur),
   },
-  // Les routes /etudiant et /relecteur arrivent avec les issues #29 et #30.
+  {
+    path: 'etudiant',
+    title: 'Étudiant — Présence48',
+    loadComponent: () => import('./etudiant/etudiant').then((m) => m.Etudiant),
+  },
+  // La route /relecteur arrive avec l'issue #30.
   { path: '**', redirectTo: 'formateur' },
 ];
