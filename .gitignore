@@ -1,0 +1,65 @@
+# ============================================================
+#  Java / Maven  (backend Spring Boot)
+# ============================================================
+target/
+!.mvn/wrapper/maven-wrapper.properties
+build/
+*.class
+*.jar
+!**/.mvn/wrapper/*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# Le wrapper Maven DOIT etre commite (contrainte B1 du sujet) :
+# mvnw, mvnw.cmd et .mvn/ ne sont donc jamais ignores.
+
+# ============================================================
+#  Node / Angular  (frontend)
+# ============================================================
+node_modules/
+dist/
+tmp/
+out-tsc/
+.angular/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ============================================================
+#  Secrets et configuration locale  (malus -5 si commite)
+# ============================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.properties
+application-local.yml
+
+# ============================================================
+#  Donnees Postgres montees par docker compose
+# ============================================================
+donnees-postgres/
+pgdata/
+
+# ============================================================
+#  IDE et systeme
+# ============================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+!.vscode/extensions.json
+.settings/
+.project
+.classpath
+*.swp
+*~
+.DS_Store
+Thumbs.db
