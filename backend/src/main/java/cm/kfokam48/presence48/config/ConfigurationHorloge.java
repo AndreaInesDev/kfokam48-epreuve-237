@@ -1,6 +1,8 @@
 package cm.kfokam48.presence48.config;
 
+import java.security.SecureRandom;
 import java.time.Clock;
+import java.util.Random;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,5 +20,14 @@ public class ConfigurationHorloge {
     @Bean
     public Clock horloge() {
         return Clock.systemUTC();
+    }
+
+    /**
+     * Le hasard du tirage au sort de RG8, injectable pour la meme raison que
+     * l'horloge : un test doit pouvoir le rendre reproductible.
+     */
+    @Bean
+    public Random aleatoire() {
+        return new SecureRandom();
     }
 }
