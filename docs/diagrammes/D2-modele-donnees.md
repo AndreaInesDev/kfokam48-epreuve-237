@@ -12,7 +12,7 @@ erDiagram
     ETUDIANT ||--o{ PRESENCE : "est présent à"
     SESSION_COURS ||--o{ EXERCICE : "reçoit"
     ETUDIANT ||--o{ EXERCICE : "dépose"
-    EXERCICE ||--o| RELECTURE : "est relu par au plus une"
+    EXERCICE ||--o{ RELECTURE : "est relu par zero, une ou deux"
     ETUDIANT ||--o{ RELECTURE : "relit en tant que relecteur"
 
     PROMOTION {
@@ -55,7 +55,7 @@ erDiagram
 
     RELECTURE {
         bigint id PK "identité"
-        bigint exercice_id FK "non nul, unique — RG7 : un seul relecteur"
+        bigint exercice_id FK "non nul — RG7 : deux relecteurs au plus"
         bigint relecteur_id FK "non nul, vers etudiant — RG2, RG8"
         integer note "nul jusqu'au rendu, sinon 0 à 20 — RG3"
         varchar commentaire "nul jusqu'au rendu"
@@ -65,7 +65,12 @@ erDiagram
     }
 ```
 
-## Correspondance avec la migration `V1__schema_initial.sql`
+> **Mis à jour à l'étape 3.** Le client a changé d'avis sur Q6 : un exercice est
+> désormais relu par **deux** pairs différents. La cardinalité entre `EXERCICE` et
+> `RELECTURE` est passée de « au plus une » à « zéro, une ou deux », et l'unicité
+> qui portait l'ancienne RG7 a été retirée par `V3__deux_relecteurs_par_exercice.sql`.
+
+## Correspondance avec les migrations `V1`, `V2` et `V3`
 
 Chaque règle de gestion est tenue soit par une contrainte de base, soit par le service — jamais par
 les deux à moitié, et jamais nulle part.
@@ -77,7 +82,7 @@ les deux à moitié, et jamais nulle part.
 | **RG3** — note entière de 0 à 20 | Base + DTO | `CHECK (note IS NULL OR note BETWEEN 0 AND 20)` et `@Min(0) @Max(20)` sur un `Integer` |
 | **RG4** — une seule présence par étudiant et session | **Base** | `UNIQUE (session_id, etudiant_id)` sur `presence` |
 | **RG6** — code unique | **Base** | `UNIQUE (code)` sur `session_cours` |
-| **RG7** — un seul relecteur par exercice | **Base** | `UNIQUE (exercice_id)` sur `relecture` |
+| **RG7** — deux relecteurs par exercice, deux pairs **differents** | **Base** | `UNIQUE (exercice_id, relecteur_id)` depuis `V3`. L'ancien `UNIQUE (exercice_id)` est supprime par cette migration : il tenait la version de RG7 issue de Q6, que l'etape 3 a invalidee |
 | **RG9** — un seul exercice par étudiant et session | **Base** | `UNIQUE (session_id, etudiant_id)` sur `exercice` |
 | **RG10** — lien URL `http(s)` | DTO | Validation à l'entrée, `400 LIEN_INVALIDE` |
 | **RG15** — source d'une présence | **Base** | `CHECK (source IN ('ETUDIANT','FORMATEUR'))` |
@@ -106,6 +111,12 @@ alimenter serait un ornement. La seule trace du formateur dans les données est
 clôturée sinon. Stocker en plus un `statut` créerait deux sources de vérité qui peuvent diverger.
 L'exercice, lui, porte bien un `statut` en colonne, parce que son cycle de vie a quatre états qui ne
 se déduisent pas d'une seule date (voir D4).
+
+**Deux relectures par exercice depuis l'étape 3.** La ligne n'est plus unique par
+exercice ; elle l'est par couple *(exercice, relecteur)*, ce qui interdit qu'un même
+étudiant soit les deux relecteurs du même travail — le client demande « deux pairs
+**différents** ». Les exercices déposés avant ce changement n'ont qu'un relecteur, et
+c'est correct au regard de la nouvelle règle : leur note est simplement *provisoire*.
 
 **`relecture` est créée au dépôt de l'exercice, pas au rendu.** La ligne existe dès le tirage au
 sort, avec `note`, `commentaire`, `consultee_at` et `rendue_at` à `NULL`. C'est ce qui permet de

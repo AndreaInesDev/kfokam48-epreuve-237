@@ -2,6 +2,11 @@
 
 *Quatrième diagramme, facultatif au sujet (bonus +3 points).*
 
+> **Mis à jour à l'étape 3.** Un exercice étant désormais relu par deux pairs, il
+> existe un état intermédiaire que ce diagramme ne prévoyait pas : une seule des
+> deux relectures rendue, note affichée mais provisoire. `RELU` ne signifie plus
+> « une relecture rendue » mais « les deux rendues ».
+
 La colonne `exercice.statut` de D2 ne prend que les quatre valeurs de ce diagramme. `DEPOSE`
 n'y figure pas : c'est un état de passage, jamais écrit en base.
 
@@ -13,6 +18,7 @@ stateDiagram-v2
     state "EN_ATTENTE_ASSIGNATION" as ATTENTE_ASSIGN
     state "EN_ATTENTE_RELECTURE" as ATTENTE_RELEC
     state "EN_COURS_DE_RELECTURE" as EN_COURS
+    state "RELU_PARTIELLEMENT" as PARTIEL
     state "RELU" as RELU
 
     [*] --> Depot : POST /api/exercices<br/>lien valide, session non cloturee<br/>EF5 · RG10 · RG11
@@ -24,8 +30,9 @@ stateDiagram-v2
 
     ATTENTE_RELEC --> EN_COURS : le relecteur ouvre l'exercice<br/>consultee_at est posé<br/>RG12
 
-    EN_COURS --> RELU : POST /api/relectures/{id}<br/>note entière 0–20 + commentaire<br/>EF9 · RG3 · RG13
-    ATTENTE_RELEC --> RELU : rendu direct, sans consultation préalable<br/>EF9 · RG3
+    EN_COURS --> PARTIEL : un seul des deux relecteurs a rendu<br/>note affichée mais PROVISOIRE<br/>RG18 · étape 3
+    ATTENTE_RELEC --> PARTIEL : rendu direct, sans consultation préalable<br/>EF9 · RG3
+    PARTIEL --> RELU : le second relecteur rend à son tour<br/>la note devient la moyenne des deux<br/>RG7 · RG18
 
     RELU --> [*]
 
@@ -47,11 +54,17 @@ stateDiagram-v2
         Compte encore dans relecturesEnAttente.
     end note
 
+    note right of PARTIEL
+        Un seul des deux relecteurs a rendu.
+        La note est affichée mais marquée
+        PROVISOIRE (étape 3, RG18).
+    end note
+
     note right of RELU
-        État terminal. Ni la note ni le
-        commentaire ne changent plus (RG13,
-        contradiction Q10/Q15 tranchée).
-        La note entre dans la moyenne (RG18).
+        État terminal : les deux relectures
+        sont rendues, la note retenue est
+        leur moyenne (RG7, RG18). Aucune
+        des deux ne change plus (RG13).
     end note
 ```
 

@@ -1,7 +1,7 @@
 # Cahier des charges — Présence48
 
 **Auteur :** Otele Andrea Ines · **Matricule :** 237 · **Centre :** Yaoundé
-**Version :** 1.2 · **Date :** 25 septembre 2026
+**Version :** 1.4 · **Date :** 25 septembre 2026
 **Frontend choisi :** Angular, parce que son injection de dépendances impose naturellement une couche de services séparée des composants — exactement la contrainte F3 — et que son client HTTP typé rend la conformité au contrat d'API vérifiable à la compilation.
 
 ---
@@ -128,7 +128,7 @@ maintenant que c'est un choix, pas un oubli.
 | **RG4** | Un étudiant ne peut être présent qu'une seule fois à une même session | Contrat (`409 DEJA_PRESENT`) |
 | **RG5** | Une présence ne peut pas être marquée après la fin de la session | Q3 |
 | **RG6** | Le code d'une session est unique parmi les sessions non expirées et n'est pas déductible d'un autre | Q4, déduit |
-| **RG7** | Un exercice reçoit un seul relecteur | Q6 |
+| **RG7** | Un exercice est relu par **deux pairs différents** ; la note retenue est la moyenne de leurs notes | Enveloppe étape 3, qui invalide Q6 |
 | **RG8** | Le relecteur est tiré au sort par le système parmi les étudiants présents à la session, l'auteur exclu | Q7 + Q5 |
 | **RG9** | Un étudiant ne dépose qu'un seul exercice par session | Contrat (`409 EXERCICE_DEJA_DEPOSE`) |
 | **RG10** | Le lien d'un exercice est une URL `http` ou `https` syntaxiquement valide | Contrat (`400 LIEN_INVALIDE`) |
@@ -139,10 +139,11 @@ maintenant que c'est un choix, pas un oubli.
 | **RG15** | Une présence ajoutée par le formateur porte la source `FORMATEUR` ; une présence saisie par l'étudiant porte la source `ETUDIANT` | Q14 |
 | **RG16** | Un exercice dont la relecture n'a pas été rendue reste « en attente » et apparaît comme tel dans le tableau du formateur | Q11 |
 | **RG17** | Après cinq codes erronés consécutifs, un étudiant est bloqué deux minutes | Q4 |
-| **RG18** | La moyenne d'un étudiant est la moyenne des notes des relectures **rendues** portant sur ses exercices ; elle est nulle tant qu'aucune note n'a été reçue | Q16 + contrat (`moyenne` nullable) |
+| **RG18** | La moyenne d'un étudiant est la moyenne des notes des relectures **rendues** portant sur ses exercices ; elle est nulle tant qu'aucune note n'a été reçue. Quand un exercice n'a reçu qu'une des deux relectures attendues, sa note est retenue mais signalée **provisoire** | Q16 + contrat + enveloppe étape 3 |
 | **RG19** | Après la clôture d'une session par le formateur, plus aucun dépôt, remplacement de lien ni rendu de relecture n'y est accepté | Hypothèse, section 7 |
-| **RG20** | Si aucun étudiant présent n'est éligible au tirage, l'exercice reste en attente d'assignation et le tirage est retenté au prochain dépôt ou à la prochaine présence enregistrée sur la session | Hypothèse, section 7 |
+| **RG20** | Si **moins de deux** étudiants présents sont éligibles au tirage, l'exercice reste en attente d'assignation pour les relecteurs manquants, et le tirage est retenté au prochain dépôt ou à la prochaine présence enregistrée sur la session | Hypothèse, section 7, revue à l'étape 3 |
 | **RG21** | Un étudiant appartient à une et une seule promotion | Déduit de Q16 et du contrat (`GET /api/tableau?promotionId=`) |
+| **RG7bis** | Les deux relecteurs d'un exercice sont deux étudiants distincts ; un même étudiant ne peut pas être les deux | Enveloppe étape 3 (« deux pairs différents ») |
 | **RG22** | La fin d'une session (expiration du code, 15 min) et sa clôture (acte du formateur) sont deux moments distincts | Hypothèse, section 7 |
 | **RG23** | Un étudiant ne peut déposer un exercice que pour une session à laquelle sa présence est enregistrée | Hypothèse, section 7 |
 
@@ -163,6 +164,8 @@ maintenant que c'est un choix, pas un oubli.
 | **Le relecteur est-il un acteur ou un état ?** Question posée par le modèle de cahier des charges, que la demande ne tranche pas | Hypothèse | Un étudiant dans un état, pas un acteur distinct. Justifié en section 2 | Aucune table `Relecteur` en D2 ; une clé `relecteur_id` sur `relecture` |
 | **Que vaut la moyenne d'un étudiant qui n'a reçu aucune note ?** Q16 demande « la moyenne des notes reçues » sans dire ce qu'elle vaut quand il n'y en a pas | Q16 + contrat | `null`, et non `0`. Le contrat déclare d'ailleurs `moyenne` comme `nullable` | RG18. Un `0` affiché laisserait croire à un travail noté zéro, ce qui est faux et injuste |
 | **Une relecture non rendue compte-t-elle dans la moyenne ?** Q11 décrit l'exercice « en attente » sans préciser son effet sur le calcul | Q11 + Q16 — hypothèse | Non. Seules les relectures rendues entrent dans la moyenne ; les autres alimentent le compteur `relecturesEnAttente` | RG16, RG18 |
+
+| **Le client a changé d'avis sur le nombre de relecteurs (étape 3).** Q6 disait « un seul », et RG7 en découlait. L'enveloppe demande deux pairs différents et la moyenne des deux, en invoquant précisément le problème de Q11 : un relecteur qui ne rend rien laisse l'étudiant sans note | Q6 invalidée par l'enveloppe étape 3 | RG7 réécrite, RG7bis ajoutée, RG18 et RG20 revues. Une note issue d'une seule des deux relectures est retenue mais marquée **provisoire** | `V3__deux_relecteurs_par_exercice.sql` retire `UNIQUE (exercice_id)`, D2 passe en cardinalité multiple, D4 gagne l'état `RELU_PARTIELLEMENT`. Le contrat expose `moyenneProvisoire` |
 
 ### Contradictions relevées
 
@@ -238,6 +241,20 @@ ajoutée à la main). Les douze premières exigences ne se négocient pas : elle
 opérations imposées du contrat. Une exigence abandonnée reste une issue ouverte, priorisée et
 expliquée — pas une issue supprimée.
 
+**Ce que le changement de l'étape 3 nous a fait sortir du périmètre.** Le passage à
+deux relecteurs est un `Must` qui arrive à vingt minutes de la fin. Nous choisissons
+de livrer **l'analyse, la migration et le contrat** — c'est-à-dire ce qui fige la
+décision et ce qui est irréversible en base — et de laisser l'implémentation du
+double tirage et du calcul de moyenne provisoire en issues ouvertes (`#36`, `#37`).
+Trois raisons. D'abord, une migration non versionnée au bon moment est le défaut que
+le sujet annonce comme le plus coûteux, et elle ne se rattrape pas après coup.
+Ensuite, un schéma et un contrat justes avec un service en retard est une situation
+qu'un développeur reprend en une heure ; l'inverse — du code qui contredit le schéma —
+se paie beaucoup plus cher. Enfin, les issues `#12`, `#13`, `#14` et `#15` étaient
+déjà sorties du périmètre selon l'ordre de sacrifice arrêté à l'étape 1, et nous ne
+réécrivons pas cet ordre pour nous donner raison : `#36` et `#37` s'insèrent **devant**
+elles, parce qu'un `Must` du client passe avant un `Should` que nous nous étions donné.
+
 **Comment nous menons l'étape 3.** L'enveloppe touchera la base, le contrat et le frontend. Nous
 arrivons donc à `v0.1` avec de la marge plutôt qu'en fin de journée, parce que l'enveloppe se
 demande à un surveillant et non à un script.
@@ -261,4 +278,5 @@ demande à un surveillant et non à un script.
 | 1 | 25 septembre 2026 | Version initiale, rédigée à l'étape 1 avant tout code |
 | 1.1 | 25 septembre 2026 | Le tracé des diagrammes D2 et D4 a révélé une zone d'ombre de plus : Q13 ne dit pas à partir de quand une relecture « a commencé ». Tranchée (première ouverture par le relecteur), RG12 précisée, EF8 complétée. Toujours à l'étape 1, avant tout code |
 | 1.2 | 25 septembre 2026 | La rédaction du contrat d'API a mis au jour une hypothèse restée implicite : faut-il être présent pour déposer un exercice ? Tranchée (oui), RG23 ajoutée, EF6 complétée. Toujours à l'étape 1, avant tout code |
+| 1.4 | 25 septembre 2026 | **Étape 3.** L'enveloppe invalide Q6 : un exercice est désormais relu par deux pairs différents, et la note retenue est la moyenne des deux, provisoire si une seule est rendue. RG7 réécrite, RG7bis ajoutée, RG18 et RG20 revues, une ligne de plus en section 7, sacrifice de périmètre écrit en section 10. D2, D4 et le contrat corrigés dans le même mouvement |
 | 1.3 | 25 septembre 2026 | L'issue #10 (format d'erreur) a mis au jour une contradiction interne : ENF4 exige que **toute** erreur réponde en `{ code, message }`, mais le catalogue `CodeErreur` ne listait que les cas métier — ni route inconnue, ni verbe refusé, ni plantage. Ces cas étaient donc condamnés à sortir sur la page d'erreur par défaut de Spring, que la même ENF4 interdit. Cinq codes ajoutés (`ROUTE_INCONNUE`, `METHODE_NON_SUPPORTEE`, `MEDIA_NON_TRAITABLE`, `MEDIA_NON_ACCEPTE`, `ERREUR_INTERNE`), les cinq opérations imposées restant intactes. Étape 2 |
