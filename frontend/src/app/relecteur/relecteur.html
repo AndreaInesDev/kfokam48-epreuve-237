@@ -1,0 +1,94 @@
+<h2>Relecteur</h2>
+
+@if (erreur()) {
+  <p class="erreur" role="alert">
+    <strong>{{ erreur()!.code }}</strong> — {{ erreur()!.message }}
+  </p>
+}
+@if (succes()) {
+  <p class="erreur" role="status">{{ succes() }}</p>
+}
+@if (chargement()) {
+  <p class="chargement" aria-live="polite">Chargement…</p>
+}
+
+<section>
+  <h3>Qui es-tu ?</h3>
+  <form>
+    <select
+      (ngModelChange)="choisirPromotion($event)"
+      [ngModel]="promotions().length ? promotions()[0].id : null"
+      name="promotion"
+      aria-label="Promotion">
+      @for (promotion of promotions(); track promotion.id) {
+        <option [value]="promotion.id">{{ promotion.nom }}</option>
+      }
+    </select>
+
+    <select
+      [ngModel]="relecteurId()"
+      (ngModelChange)="choisirRelecteur($event)"
+      name="relecteur"
+      aria-label="Mon nom">
+      <option [ngValue]="null">— choisis ton nom —</option>
+      @for (etudiant of etudiants(); track etudiant.id) {
+        <option [value]="etudiant.id">{{ etudiant.nom }}</option>
+      }
+    </select>
+  </form>
+</section>
+
+@if (relecteurId() !== null) {
+  <section>
+    <h3>Ce que je dois relire</h3>
+    <p>
+      Tu ne choisis pas les exercices : le système te les assigne au hasard parmi ceux des
+      étudiants présents. Le nom de l'auteur ne t'est jamais communiqué.
+    </p>
+    <ul>
+      @for (relecture of aRendre(); track relecture.id) {
+        <li>
+          <strong>{{ relecture.sessionTitre }}</strong> —
+          <a [href]="relecture.lien" target="_blank" rel="noopener">{{ relecture.lien }}</a>
+          @if (relecture.commencee) {
+            <em> (déjà ouverte)</em>
+          }
+          <button type="button" (click)="ouvrir(relecture)" [disabled]="chargement()">
+            Ouvrir et noter
+          </button>
+        </li>
+      } @empty {
+        <li>Rien à relire pour l'instant.</li>
+      }
+    </ul>
+  </section>
+}
+
+@if (enCours(); as relecture) {
+  <section>
+    <h3>Noter</h3>
+    <p>
+      Exercice : <a [href]="relecture.lien" target="_blank" rel="noopener">{{ relecture.lien }}</a>
+    </p>
+    <form (ngSubmit)="rendre()">
+      <input
+        type="number"
+        min="0"
+        max="20"
+        step="1"
+        [ngModel]="note()"
+        (ngModelChange)="note.set($event)"
+        name="note"
+        placeholder="Note sur 20"
+        aria-label="Note sur 20" />
+      <input
+        [ngModel]="commentaire()"
+        (ngModelChange)="commentaire.set($event)"
+        name="commentaire"
+        placeholder="Commentaire"
+        aria-label="Commentaire" />
+      <button type="submit" [disabled]="chargement()">Rendre</button>
+    </form>
+    <p><strong>Attention :</strong> une fois rendue, la note est définitive.</p>
+  </section>
+}
