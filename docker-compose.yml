@@ -1,0 +1,36 @@
+# Presence48 — base de donnees de developpement et de demonstration.
+#
+# Seul PostgreSQL est conteneurise. Le backend et le frontend se lancent avec
+# leurs outils natifs, ce qui evite au correcteur de construire deux images :
+# le sujet autorise « docker compose up, ou trois commandes maximum ».
+#
+# Les valeurs par defaut ci-dessous sont des identifiants de developpement,
+# volontairement publics. Aucun secret ne doit figurer dans ce fichier : pour
+# changer ces valeurs, copiez .env.example en .env, qui est ignore par Git.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: presence48-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-presence48}
+      POSTGRES_USER: ${POSTGRES_USER:-presence48}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-presence48}
+      # Les horodatages sont stockes en UTC (RG1 est une regle d'ecart temporel,
+      # qu'un decalage de fuseau fausserait).
+      TZ: UTC
+      PGTZ: UTC
+    # Port hote 5434 et non 5432 : beaucoup de postes ont deja un PostgreSQL
+    # local sur le port standard, et le conteneur refuserait de demarrer.
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - donnees-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-presence48} -d ${POSTGRES_DB:-presence48}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  donnees-postgres:
