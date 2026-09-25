@@ -16,7 +16,7 @@
 | | |
 |---|---|
 | Dépôt (public) | `https://github.com/AndreaInesDev/kfokam48-epreuve-237` |
-| Commit final — hash complet, 40 caractères | `aa4f458beb4d3b6a15e77ab6d73bdef58d07bb7c` |
+| Commit final — hash complet, 40 caractères | `ea290e3352cf7498fcbe8db97d6a8eeb53d95769` |
 | Branche | `main` |
 
 ## Technique
@@ -64,12 +64,12 @@ dédiée qui dit ce qui s'est passé, et consigné dans le journal plutôt que m
 
 ## Avant de téléverser, vérifie
 
-- [ ] Mon dépôt est **public** et s'ouvre en navigation privée
-- [ ] Mon hash fait bien **40 caractères** et existe sur GitHub
-- [ ] Tout mon travail est **poussé** — `git status` est propre
-- [ ] Mon `README` a été testé depuis un clone vierge, dans un dossier vide
-- [ ] Mon `JOURNAL.md` et mon cahier des charges sont dans `docs/`
-- [ ] Les trois commits `[JALON]` sont poussés et dans le bon ordre
+- [x] Mon dépôt est **public** et s'ouvre en navigation privée
+- [x] Mon hash fait bien **40 caractères** et existe sur GitHub
+- [x] Tout mon travail est **poussé** — `git status` est propre
+- [x] Mon `README` a été testé depuis un clone vierge, dans un dossier vide
+- [x] Mon `JOURNAL.md` et mon cahier des charges sont dans `docs/`
+- [x] Les trois commits `[JALON]` sont poussés et dans le bon ordre
 
 ---
 
