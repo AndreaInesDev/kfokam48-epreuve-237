@@ -519,6 +519,16 @@ components:
         - RELECTURE_NON_ASSIGNEE  # 403 — un autre étudiant que le relecteur
         - RELECTURE_DEJA_RENDUE   # 409 — RG13
 
+        # AJOUT (issue #10, cahier v1.3) — le format d'erreur imposé vaut pour
+        # TOUTE erreur (ENF4), pas seulement pour les cas métier. Sans ces cinq
+        # codes, une route inconnue ou un plantage retomberait sur la page
+        # d'erreur par défaut de Spring, que la même ENF4 interdit.
+        - ROUTE_INCONNUE          # 404 — aucune route ne correspond
+        - METHODE_NON_SUPPORTEE   # 405 — verbe HTTP refusé par la route
+        - MEDIA_NON_TRAITABLE     # 415 — type de contenu non supporté
+        - MEDIA_NON_ACCEPTE       # 406 — type de réponse demandé impossible
+        - ERREUR_INTERNE          # 500 — exception imprévue, tracée côté serveur
+
     StatutExercice:
       type: string
       description: Voir docs/diagrammes/D4. DEPOSE n'est pas persisté.
