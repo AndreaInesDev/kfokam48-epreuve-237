@@ -1,21 +1,58 @@
 openapi: 3.0.3
 info:
-  title: Contrat imposé — Épreuve finale KFOKAM48
-  version: "1.0"
+  title: Contrat d'API — Présence48 (épreuve finale KFOKAM48)
+  version: "1.1"
   description: |
-    Les cinq opérations décrites ici doivent exister EXACTEMENT ainsi :
-    mêmes chemins, mêmes verbes, mêmes codes de statut, même format d'erreur.
-    Tout le reste de ton API est libre — ajoute tes propres opérations
-    dans ce même fichier, sous /api, avant ton premier commit de code.
+    ## Ce document
+
+    Les CINQ OPÉRATIONS IMPOSÉES par le sujet sont reprises ici sans la moindre
+    modification de chemin, de verbe, de schéma ni de code de statut :
+
+      - POST /api/sessions
+      - POST /api/presences
+      - POST /api/exercices
+      - POST /api/relectures/{id}
+      - GET  /api/tableau
+
+    Tout le reste est ajouté par le candidat et signalé par un commentaire
+    « AJOUT ». Une seule opération imposée reçoit une réponse supplémentaire —
+    le 429 de POST /api/presences, exigé par Q4 — et l'ajout y est signalé
+    explicitement plutôt que glissé en silence.
+
+    ## Version figée
+
+    Version 1.1, arrêtée à l'étape 1 AVANT le premier commit de code.
+    L'étape 3 la fera évoluer ; la version sera alors incrémentée et le
+    cahier des charges mis à jour dans le même mouvement.
+
+    ## Format d'erreur
+
+    Toutes les erreurs, sans exception, répondent `{ code, message }`.
+    Catalogue complet des codes en fin de document (schéma CodeErreur).
 
 servers:
   - url: http://localhost:8080
 
+tags:
+  - name: Sessions
+  - name: Présences
+  - name: Exercices
+  - name: Relectures
+  - name: Tableau
+  - name: Référentiel
+
 paths:
 
+  # ==========================================================================
+  #  OPÉRATION IMPOSÉE 1/5
+  # ==========================================================================
   /api/sessions:
     post:
+      tags: [Sessions]
       summary: Le formateur ouvre une session et obtient un code de présence
+      description: |
+        EF1. `expirationAt` vaut `ouvertureAt` + 15 minutes (RG1).
+        Le code est unique (RG6).
       requestBody:
         required: true
         content:
@@ -40,10 +77,68 @@ paths:
                   ouvertureAt: { type: string, format: date-time }
                   expirationAt: { type: string, format: date-time }
         "400": { $ref: "#/components/responses/Erreur" }
+        # AJOUT — promotionId qui ne correspond à aucune promotion
+        "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
 
+    # AJOUT — le frontend formateur a besoin de retrouver ses sessions
+    get:
+      tags: [Sessions]
+      summary: Lister les sessions d'une promotion
+      description: AJOUT. Sert aux écrans formateur (clôture, ajout manuel de présence).
+      parameters:
+        - name: promotionId
+          in: query
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Sessions de la promotion, de la plus récente à la plus ancienne
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Session" }
+        "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
+
+  # ==========================================================================
+  #  AJOUT — la clôture de session, absente de la demande du client
+  #  Q10, Q12 et Q13 en dépendent toutes les trois, et aucune des cinq
+  #  opérations imposées ne la fournit. C'est le trou principal comblé
+  #  par l'analyse (RG19, RG22, EF12).
+  # ==========================================================================
+  /api/sessions/{id}/cloture:
+    post:
+      tags: [Sessions]
+      summary: Le formateur clôture une session
+      description: |
+        AJOUT. EF12, RG19. Après la clôture, plus aucun dépôt d'exercice,
+        remplacement de lien ni rendu de relecture n'est accepté sur cette
+        session. La clôture est distincte de l'expiration du code (RG22).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Session clôturée
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
+        "409": { $ref: "#/components/responses/Erreur" }   # SESSION_DEJA_CLOTUREE
+
+  # ==========================================================================
+  #  OPÉRATION IMPOSÉE 2/5
+  # ==========================================================================
   /api/presences:
     post:
+      tags: [Présences]
       summary: Un étudiant marque sa présence avec le code
+      description: |
+        EF3, EF4. `source` vaut toujours ETUDIANT sur cette opération (RG15).
+        Ordre des vérifications : validation, blocage, code inconnu,
+        expiration, doublon — justifié dans docs/diagrammes/D3.
       requestBody:
         required: true
         content:
@@ -70,10 +165,61 @@ paths:
         "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
         "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE
+        # AJOUT à une opération imposée — exigé par Q4 (cinq erreurs, blocage
+        # de deux minutes). Aucun code imposé n'est modifié ni retiré ; une
+        # réponse est ajoutée, parce que Q4 n'a nulle part ailleurs où vivre.
+        # Conditionné à la livraison d'EF16, priorisée Could.
+        "429": { $ref: "#/components/responses/Erreur" }   # TROP_D_ESSAIS
 
+  # ==========================================================================
+  #  AJOUT — l'ajout manuel d'une présence par le formateur (Q14)
+  #  Ne peut pas passer par POST /api/presences : cette opération prend un
+  #  code, alors que le formateur désigne directement une session.
+  # ==========================================================================
+  /api/sessions/{id}/presences:
+    post:
+      tags: [Présences]
+      summary: Le formateur ajoute une présence à la main
+      description: |
+        AJOUT. EF13, RG15. La présence créée porte `source = FORMATEUR`,
+        pour qu'elle se distingue d'une présence saisie par l'étudiant (Q14).
+        Aucun code de présence n'est demandé, et l'expiration ne s'applique pas.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [etudiantId]
+              properties:
+                etudiantId: { type: integer, format: int64 }
+      responses:
+        "201":
+          description: Présence enregistrée au nom du formateur
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Presence" }
+        "400": { $ref: "#/components/responses/Erreur" }   # REQUETE_INVALIDE
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE, ETUDIANT_INCONNU
+        "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
+
+  # ==========================================================================
+  #  OPÉRATION IMPOSÉE 3/5
+  # ==========================================================================
   /api/exercices:
     post:
+      tags: [Exercices]
       summary: Un étudiant dépose le lien de son exercice
+      description: |
+        EF5, EF6. Le dépôt déclenche le tirage au sort du relecteur (RG8) :
+        si aucun étudiant présent n'est éligible, l'exercice naît au statut
+        EN_ATTENTE_ASSIGNATION et le tirage est retenté plus tard (RG20).
+        Possible après l'expiration du code, jusqu'à la clôture (RG11, RG19).
       requestBody:
         required: true
         content:
@@ -97,11 +243,57 @@ paths:
                   id: { type: integer, format: int64 }
                   statut: { type: string }
         "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE
-        "409": { $ref: "#/components/responses/Erreur" }   # EXERCICE_DEJA_DEPOSE
+        "409": { $ref: "#/components/responses/Erreur" }   # EXERCICE_DEJA_DEPOSE,
+                                                          # ETUDIANT_NON_PRESENT,
+                                                          # SESSION_CLOTUREE
+        # AJOUT — sessionId ou etudiantId inexistant
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE, ETUDIANT_INCONNU
 
+  # ==========================================================================
+  #  AJOUT — remplacer le lien de son exercice (Q13, EF14, RG12)
+  # ==========================================================================
+  /api/exercices/{id}:
+    put:
+      tags: [Exercices]
+      summary: Un étudiant remplace le lien de son exercice
+      description: |
+        AJOUT. EF14, RG12. Autorisé tant que le relecteur n'a pas ouvert
+        l'exercice, c'est-à-dire tant que la relecture n'a pas commencé.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lien]
+              properties:
+                lien: { type: string, format: uri }
+      responses:
+        "200":
+          description: Lien remplacé
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercice" }
+        "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE
+        "404": { $ref: "#/components/responses/Erreur" }   # EXERCICE_INCONNU
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_COMMENCEE, SESSION_CLOTUREE
+
+  # ==========================================================================
+  #  OPÉRATION IMPOSÉE 4/5
+  # ==========================================================================
   /api/relectures/{id}:
     post:
+      tags: [Relectures]
       summary: Un relecteur rend sa note et son commentaire
+      description: |
+        EF9, EF10. Une fois rendue, la relecture est définitive (RG13) :
+        contradiction Q10 / Q15 tranchée en faveur de Q15, justifiée en
+        section 7 du cahier des charges. C'est ce 409 qui la matérialise.
       parameters:
         - name: id
           in: path
@@ -120,12 +312,79 @@ paths:
       responses:
         "200": { description: Relecture enregistrée }
         "400": { $ref: "#/components/responses/Erreur" }   # NOTE_INVALIDE
-        "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
+        "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE,
+                                                           # RELECTURE_NON_ASSIGNEE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE
+        # AJOUT — identifiant de relecture inexistant
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
+
+  # ==========================================================================
+  #  AJOUT — l'écran relecteur (F2) n'a sinon aucun moyen de savoir quoi relire
+  # ==========================================================================
+  /api/relectures:
+    get:
+      tags: [Relectures]
+      summary: Les relectures qu'un étudiant doit rendre
+      description: |
+        AJOUT. EF8. Renvoie les relectures assignées à cet étudiant et non
+        encore rendues, avec le lien de l'exercice à relire. Ne révèle jamais
+        l'identité de l'auteur : elle n'est pas nécessaire pour relire.
+      parameters:
+        - name: relecteurId
+          in: query
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Relectures à rendre
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RelectureATraiter" }
+        "404": { $ref: "#/components/responses/Erreur" }   # ETUDIANT_INCONNU
+
+  # ==========================================================================
+  #  AJOUT — marquer le début d'une relecture (RG12)
+  #  Volontairement un POST et non un GET : l'appel a un effet de bord, il
+  #  pose consultee_at. Un GET qui modifie l'état serait une faute.
+  # ==========================================================================
+  /api/relectures/{id}/ouverture:
+    post:
+      tags: [Relectures]
+      summary: Le relecteur ouvre l'exercice — la relecture commence
+      description: |
+        AJOUT. RG12. Pose `consultee_at` au premier appel et fige le lien de
+        l'exercice : à partir de cet instant, l'auteur ne peut plus le
+        remplacer. Idempotent — un second appel ne change pas `consultee_at`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Relecture ouverte, lien de l'exercice à relire
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelectureATraiter" }
+        "403": { $ref: "#/components/responses/Erreur" }   # RELECTURE_NON_ASSIGNEE
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
         "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE
 
+  # ==========================================================================
+  #  OPÉRATION IMPOSÉE 5/5
+  # ==========================================================================
   /api/tableau:
     get:
+      tags: [Tableau]
       summary: Le tableau récapitulatif du formateur
+      description: |
+        EF11, Q16. `moyenne` est la moyenne des notes des relectures RENDUES
+        portant sur les exercices de l'étudiant, et vaut `null` — jamais 0 —
+        tant qu'aucune note n'a été reçue (RG18).
+        `relecturesEnAttente` compte les relectures assignées à cet étudiant
+        et non rendues (RG16).
       parameters:
         - name: promotionId
           in: query
@@ -151,8 +410,77 @@ paths:
                     relecturesEnAttente: { type: integer }
         "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
 
+  # ==========================================================================
+  #  AJOUT — le référentiel, sans lequel Q1 est inapplicable
+  #  « L'étudiant choisit son nom dans une liste » — mais aucune opération
+  #  imposée ne fournit cette liste.
+  # ==========================================================================
+  /api/promotions:
+    get:
+      tags: [Référentiel]
+      summary: Lister les promotions
+      description: AJOUT. Point d'entrée de tous les écrans.
+      responses:
+        "200":
+          description: Promotions existantes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Promotion" }
+
+  /api/promotions/{id}/etudiants:
+    get:
+      tags: [Référentiel]
+      summary: Lister les étudiants d'une promotion
+      description: |
+        AJOUT. EF2, Q1 : l'étudiant se choisit dans cette liste, il n'y a
+        ni mot de passe ni compte.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Étudiants de la promotion
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Etudiant" }
+        "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
+
+  # ==========================================================================
+  #  AJOUT — l'étudiant consulte la note reçue, sans l'identité du relecteur
+  # ==========================================================================
+  /api/etudiants/{id}/exercices:
+    get:
+      tags: [Exercices]
+      summary: Les exercices d'un étudiant et les notes reçues
+      description: |
+        AJOUT. EF15, RG14. Renvoie note et commentaire quand la relecture est
+        rendue. Ne contient JAMAIS l'identité du relecteur — Q8 l'interdit, et
+        c'est pour cela que le schéma NoteRecue n'a pas de champ relecteur.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Exercices déposés par cet étudiant
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ExerciceAvecNote" }
+        "404": { $ref: "#/components/responses/Erreur" }   # ETUDIANT_INCONNU
+
 components:
   schemas:
+
+    # ---- Schéma d'erreur IMPOSÉ, repris sans modification ----
     Erreur:
       type: object
       required: [code, message]
@@ -163,7 +491,126 @@ components:
         message:
           type: string
           description: Phrase lisible par un humain, en français
+
+    # ---- AJOUT : catalogue ferme des codes d'erreur ----
+    # Un énuméré unique côté serveur évite que deux endpoints renvoient deux
+    # orthographes du même code, ce que la contrainte B2 sanctionne.
+    CodeErreur:
+      type: string
+      enum:
+        - REQUETE_INVALIDE        # 400 — champ manquant ou mal formé
+        - PROMOTION_INCONNUE      # 404
+        - SESSION_INCONNUE        # 404
+        - ETUDIANT_INCONNU        # 404
+        - EXERCICE_INCONNU        # 404
+        - RELECTURE_INCONNUE      # 404
+        - CODE_INCONNU            # 400 — aucune session ne porte ce code
+        - CODE_EXPIRE             # 410 — RG1
+        - DEJA_PRESENT            # 409 — RG4
+        - TROP_D_ESSAIS           # 429 — RG17
+        - LIEN_INVALIDE           # 400 — RG10
+        - EXERCICE_DEJA_DEPOSE    # 409 — RG9
+        - ETUDIANT_NON_PRESENT    # 409 — RG23
+        - SESSION_CLOTUREE        # 409 — RG19
+        - SESSION_DEJA_CLOTUREE   # 409 — EF12
+        - RELECTURE_COMMENCEE     # 409 — RG12
+        - NOTE_INVALIDE           # 400 — RG3
+        - AUTO_RELECTURE          # 403 — RG2
+        - RELECTURE_NON_ASSIGNEE  # 403 — un autre étudiant que le relecteur
+        - RELECTURE_DEJA_RENDUE   # 409 — RG13
+
+    StatutExercice:
+      type: string
+      description: Voir docs/diagrammes/D4. DEPOSE n'est pas persisté.
+      enum:
+        - EN_ATTENTE_ASSIGNATION
+        - EN_ATTENTE_RELECTURE
+        - EN_COURS_DE_RELECTURE
+        - RELU
+
+    Promotion:
+      type: object
+      required: [id, nom]
+      properties:
+        id: { type: integer, format: int64 }
+        nom: { type: string }
+
+    Etudiant:
+      type: object
+      required: [id, nom]
+      properties:
+        id: { type: integer, format: int64 }
+        nom: { type: string }
+
+    Session:
+      type: object
+      required: [id, titre, promotionId, code, ouvertureAt, expirationAt, cloturee]
+      properties:
+        id: { type: integer, format: int64 }
+        titre: { type: string }
+        promotionId: { type: integer, format: int64 }
+        code: { type: string }
+        ouvertureAt: { type: string, format: date-time }
+        expirationAt: { type: string, format: date-time }
+        clotureeAt: { type: string, format: date-time, nullable: true }
+        cloturee: { type: boolean }
+
+    Presence:
+      type: object
+      required: [id, sessionId, etudiantId, source]
+      properties:
+        id: { type: integer, format: int64 }
+        sessionId: { type: integer, format: int64 }
+        etudiantId: { type: integer, format: int64 }
+        source: { type: string, enum: [ETUDIANT, FORMATEUR] }
+        marqueeAt: { type: string, format: date-time }
+
+    Exercice:
+      type: object
+      required: [id, sessionId, etudiantId, lien, statut]
+      properties:
+        id: { type: integer, format: int64 }
+        sessionId: { type: integer, format: int64 }
+        etudiantId: { type: integer, format: int64 }
+        lien: { type: string, format: uri }
+        statut: { $ref: "#/components/schemas/StatutExercice" }
+        deposeAt: { type: string, format: date-time }
+
+    ExerciceAvecNote:
+      description: |
+        Un exercice vu par son auteur. Aucun champ ne désigne le relecteur :
+        Q8 l'interdit, et l'absence est structurelle, pas un filtrage.
+      type: object
+      required: [id, sessionId, sessionTitre, lien, statut]
+      properties:
+        id: { type: integer, format: int64 }
+        sessionId: { type: integer, format: int64 }
+        sessionTitre: { type: string }
+        lien: { type: string, format: uri }
+        statut: { $ref: "#/components/schemas/StatutExercice" }
+        note: { type: integer, nullable: true }
+        commentaire: { type: string, nullable: true }
+        modifiable:
+          type: boolean
+          description: Vrai tant que la relecture n'a pas commencé (RG12)
+
+    RelectureATraiter:
+      description: |
+        Une relecture vue par son relecteur. Ne contient pas l'identité de
+        l'auteur : elle n'est pas nécessaire pour relire un travail.
+      type: object
+      required: [id, exerciceId, lien, sessionTitre, commencee]
+      properties:
+        id: { type: integer, format: int64 }
+        exerciceId: { type: integer, format: int64 }
+        lien: { type: string, format: uri }
+        sessionTitre: { type: string }
+        commencee:
+          type: boolean
+          description: Vrai dès que consultee_at est posé (RG12)
+
   responses:
+    # ---- Réponse d'erreur IMPOSÉE, reprise sans modification ----
     Erreur:
       description: |
         Format d'erreur imposé pour TOUTES les erreurs, sans exception.
