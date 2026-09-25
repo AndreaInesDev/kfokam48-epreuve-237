@@ -26,6 +26,11 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+    deserialization:
+      # RG3 : une note doit etre un ENTIER. Par defaut Jackson accepte 12.5 et le
+      # tronque silencieusement en 12 — le contrat exige 400 pour ce cas, et un
+      # arrondi silencieux sur une note serait pire qu'un refus.
+      accept-float-as-int: false
 
   # B4 : jamais de page d'erreur par defaut ni de stack trace vers le client.
   # Toutes les erreurs passent par le @RestControllerAdvice (issue #10).
