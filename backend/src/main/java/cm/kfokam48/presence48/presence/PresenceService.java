@@ -6,7 +6,9 @@ import cm.kfokam48.presence48.domaine.SessionCours;
 import cm.kfokam48.presence48.domaine.SourcePresence;
 import cm.kfokam48.presence48.erreur.CodeErreur;
 import cm.kfokam48.presence48.erreur.ExceptionMetier;
+import cm.kfokam48.presence48.exercice.ExerciceRepository;
 import cm.kfokam48.presence48.referentiel.EtudiantRepository;
+import cm.kfokam48.presence48.relecture.AssignateurRelecteur;
 import cm.kfokam48.presence48.session.SessionRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -39,13 +41,18 @@ public class PresenceService {
     private final SessionRepository sessions;
     private final EtudiantRepository etudiants;
     private final PresenceRepository presences;
+    private final ExerciceRepository exercices;
+    private final AssignateurRelecteur assignateur;
     private final Clock horloge;
 
     public PresenceService(SessionRepository sessions, EtudiantRepository etudiants,
-            PresenceRepository presences, Clock horloge) {
+            PresenceRepository presences, ExerciceRepository exercices,
+            AssignateurRelecteur assignateur, Clock horloge) {
         this.sessions = sessions;
         this.etudiants = etudiants;
         this.presences = presences;
+        this.exercices = exercices;
+        this.assignateur = assignateur;
         this.horloge = horloge;
     }
 
@@ -79,9 +86,12 @@ public class PresenceService {
         Presence presence = presences.save(new Presence(
                 session, etudiant, SourcePresence.ETUDIANT, OffsetDateTime.now(horloge)));
 
-        // RG20 : l'arrivee d'un present rend le tirage au sort possible pour les
-        // exercices restes en attente d'assignation. Branche a l'issue #5, qui
-        // livre le tirage — D3 le montre deja comme effet de bord du cas nominal.
+        // RG20 : l'arrivee d'un present rend le tirage possible pour les exercices
+        // restes sans relecteur. D3 montre cet effet de bord du cas nominal.
+        var presentsMaintenant = presences.etudiantsPresentsA(session.getId());
+        exercices.findBySessionIdAndStatut(
+                        session.getId(), cm.kfokam48.presence48.domaine.StatutExercice.EN_ATTENTE_ASSIGNATION)
+                .forEach(orphelin -> assignateur.assigner(orphelin, presentsMaintenant));
 
         return new PresenceDto(presence.getId(), session.getId(), etudiant.getId(),
                 presence.getSource());

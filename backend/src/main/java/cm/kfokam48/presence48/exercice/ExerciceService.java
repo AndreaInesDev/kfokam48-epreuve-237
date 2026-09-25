@@ -7,6 +7,7 @@ import cm.kfokam48.presence48.domaine.StatutExercice;
 import cm.kfokam48.presence48.erreur.CodeErreur;
 import cm.kfokam48.presence48.erreur.ExceptionMetier;
 import cm.kfokam48.presence48.presence.PresenceRepository;
+import cm.kfokam48.presence48.relecture.AssignateurRelecteur;
 import cm.kfokam48.presence48.referentiel.EtudiantRepository;
 import cm.kfokam48.presence48.session.SessionRepository;
 import java.time.Clock;
@@ -39,14 +40,17 @@ public class ExerciceService {
     private final SessionRepository sessions;
     private final EtudiantRepository etudiants;
     private final PresenceRepository presences;
+    private final AssignateurRelecteur assignateur;
     private final Clock horloge;
 
     public ExerciceService(ExerciceRepository exercices, SessionRepository sessions,
-            EtudiantRepository etudiants, PresenceRepository presences, Clock horloge) {
+            EtudiantRepository etudiants, PresenceRepository presences,
+            AssignateurRelecteur assignateur, Clock horloge) {
         this.exercices = exercices;
         this.sessions = sessions;
         this.etudiants = etudiants;
         this.presences = presences;
+        this.assignateur = assignateur;
         this.horloge = horloge;
     }
 
@@ -88,11 +92,12 @@ public class ExerciceService {
             throw new ExceptionMetier(CodeErreur.EXERCICE_DEJA_DEPOSE);
         }
 
-        // Le tirage au sort du relecteur (RG8) arrive avec l'issue #5. Tant qu'il
-        // n'est pas livre, l'exercice nait en attente d'assignation — exactement
-        // l'etat que D4 prevoit quand aucun relecteur n'a pu etre designe.
         Exercice exercice = exercices.save(new Exercice(session, etudiant, requete.lien().trim(),
                 StatutExercice.EN_ATTENTE_ASSIGNATION, OffsetDateTime.now(horloge)));
+
+        // RG8 : le tirage au sort est un effet de bord du depot — c'est le seul
+        // instant ou l'on connait a la fois l'exercice et la liste des presents.
+        assignateur.assigner(exercice, presences.etudiantsPresentsA(session.getId()));
 
         return new ExerciceDeposeDto(exercice.getId(), exercice.getStatut());
     }
