@@ -36,7 +36,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
+// Base neuve avant chaque test : chacun installe l'etat de la course, et
+// aucun ne doit laisser de presence derriere lui pour les autres classes.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @DisplayName("Bug #34 — le retirage RG20 ne doit jamais annuler une presence valide")
 class PresenceEtRetirageTest {
 

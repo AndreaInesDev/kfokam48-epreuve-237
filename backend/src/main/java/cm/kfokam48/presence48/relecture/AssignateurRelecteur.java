@@ -51,6 +51,20 @@ public class AssignateurRelecteur {
      * @return la relecture creee, ou vide si personne n'etait eligible (RG20)
      */
     public Optional<Relecture> assigner(Exercice exercice, List<Etudiant> presentsALaSession) {
+        // Bug #34 : cet exercice peut avoir ete assigne entre-temps par un autre
+        // appel — le retirage de RG20 se declenche a chaque presence enregistree.
+        // Sans ce garde-fou, l'insertion violerait UNIQUE (exercice_id) et, comme
+        // elle vit dans la transaction de la presence, elle annulerait une presence
+        // parfaitement valide. On se contente alors de remettre le statut d'accord
+        // avec la realite, et RG7 reste tenue.
+        Optional<Relecture> dejaAssignee = relectures.findByExerciceId(exercice.getId());
+        if (dejaAssignee.isPresent()) {
+            exercice.changerStatut(dejaAssignee.get().estRendue()
+                    ? StatutExercice.RELU
+                    : StatutExercice.EN_ATTENTE_RELECTURE);
+            return dejaAssignee;
+        }
+
         // RG2 : l'auteur ne peut jamais relire son propre exercice.
         List<Etudiant> candidats = presentsALaSession.stream()
                 .filter(candidat -> !candidat.getId().equals(exercice.getEtudiant().getId()))
